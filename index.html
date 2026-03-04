@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Military Tracker — Login</title>
+  <title>Military Tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet"/>
@@ -42,115 +42,8 @@
       z-index: 9999;
     }
 
-    /* LOGIN */
-    #login-screen {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      background-image:
-        linear-gradient(rgba(0,255,136,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,136,0.04) 1px, transparent 1px);
-      background-size: 40px 40px;
-    }
-    .login-box {
-      background: var(--panel);
-      border: 1px solid var(--green-dim);
-      padding: 3rem 2.5rem;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 0 60px rgba(0,255,136,0.08);
-      text-align: center;
-    }
-    .login-badge {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--green);
-      border: 1px solid var(--green-dim);
-      padding: 0.25rem 1rem;
-      letter-spacing: 0.2em;
-      display: inline-block;
-      margin-bottom: 1.5rem;
-      animation: pulse-border 2s ease-in-out infinite;
-    }
-    @keyframes pulse-border {
-      0%,100% { border-color: var(--green-dim); }
-      50% { border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,136,0.3); }
-    }
-    .login-title {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.4rem;
-      font-weight: 900;
-      color: #fff;
-      letter-spacing: 0.1em;
-      margin-bottom: 0.3rem;
-    }
-    .login-title span { color: var(--green); }
-    .login-subtitle {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--dim);
-      letter-spacing: 0.1em;
-      margin-bottom: 2rem;
-    }
-    .login-input {
-      width: 100%;
-      background: #080e08;
-      border: 1px solid var(--border);
-      color: var(--green);
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 1rem;
-      padding: 0.85rem 1rem;
-      letter-spacing: 0.15em;
-      outline: none;
-      margin-bottom: 1rem;
-      transition: border-color 0.2s;
-      text-align: center;
-    }
-    .login-input:focus { border-color: var(--green-dim); }
-    .login-input::placeholder { color: var(--dim); letter-spacing: 0.1em; }
-    .login-btn {
-      width: 100%;
-      background: rgba(0,255,136,0.1);
-      border: 1px solid var(--green-dim);
-      color: var(--green);
-      font-family: 'Orbitron', monospace;
-      font-size: 0.85rem;
-      font-weight: 700;
-      padding: 0.85rem;
-      letter-spacing: 0.2em;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-transform: uppercase;
-    }
-    .login-btn:hover {
-      background: rgba(0,255,136,0.2);
-      box-shadow: 0 0 20px rgba(0,255,136,0.15);
-    }
-    .login-error {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--red);
-      margin-top: 0.75rem;
-      letter-spacing: 0.1em;
-      height: 1rem;
-    }
-    .login-disclaimer {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.6rem;
-      color: var(--dim);
-      margin-top: 1.5rem;
-      line-height: 1.7;
-      border-top: 1px solid var(--border);
-      padding-top: 1rem;
-    }
-
     /* APP */
-    #app { display: none; flex-direction: column; height: 100vh; }
-    #app.visible { display: flex; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
 
     .topbar {
       background: var(--panel);
@@ -190,19 +83,7 @@
     }
     .topbar-stat { color: var(--dim); }
     .topbar-stat span { color: var(--green); font-weight: bold; }
-    .logout-btn {
-      margin-left: auto;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.65rem;
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--dim);
-      padding: 0.25rem 0.75rem;
-      cursor: pointer;
-      letter-spacing: 0.1em;
-      transition: all 0.15s;
-    }
-    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+    .logout-btn { display: none; }
 
     .main {
       display: grid;
@@ -328,25 +209,6 @@
 </head>
 <body>
 
-  <!-- LOGIN -->
-  <div id="login-screen">
-    <div class="login-box">
-      <div class="login-badge">▌ RESTRICTED ACCESS ▌</div>
-      <div class="login-title">MILITARY<span>TRACKER</span></div>
-      <div class="login-subtitle">// AUTHORIZED PERSONNEL ONLY</div>
-      <input class="login-input" type="password" id="password-input"
-        placeholder="ENTER ACCESS CODE"
-        onkeydown="if(event.key==='Enter') checkPassword()"
-        autocomplete="off"/>
-      <button class="login-btn" onclick="checkPassword()">▸ AUTHENTICATE</button>
-      <div class="login-error" id="login-error"></div>
-      <div class="login-disclaimer">
-        This is a private, independent tracker.<br>
-        Not affiliated with any government or military organization.
-      </div>
-    </div>
-  </div>
-
   <!-- APP -->
   <div id="app">
     <div class="topbar">
@@ -357,7 +219,6 @@
         <div class="topbar-stat">GROUND: <span id="count-ground">0</span></div>
         <div class="topbar-stat">NATIONS: <span id="count-nations">0</span></div>
       </div>
-      <button class="logout-btn" onclick="logout()">⏏ LOGOUT</button>
     </div>
     <div class="main">
       <div id="map"></div>
@@ -379,28 +240,6 @@
   </div>
 
 <script>
-  const CORRECT_PASSWORD = "MilTrack#7291!";
-
-  function checkPassword() {
-    const input = document.getElementById('password-input').value;
-    const error = document.getElementById('login-error');
-    if (input === CORRECT_PASSWORD) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').classList.add('visible');
-      initMap();
-    } else {
-      error.textContent = '⚠ ACCESS DENIED — INVALID CODE';
-      document.getElementById('password-input').value = '';
-      setTimeout(() => error.textContent = '', 3000);
-    }
-  }
-
-  function logout() {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').classList.remove('visible');
-    document.getElementById('password-input').value = '';
-  }
-
   const vehicles = [
     { id: 1, name: "B-52H Stratofortress", country: "United States", flag: "🇺🇸", type: "AIR", category: "Strategic Bomber", lat: 38.5, lng: -77.0, speed: "650 mph", alt: "50,000 ft" },
     { id: 2, name: "F-22 Raptor", country: "United States", flag: "🇺🇸", type: "AIR", category: "Stealth Fighter", lat: 36.0, lng: -115.0, speed: "1,500 mph", alt: "65,000 ft" },
@@ -416,6 +255,8 @@
   ];
 
   let map, markers = {}, activeFilter = 'ALL';
+
+  window.onload = function() { initMap(); };
 
   function initMap() {
     if (map) return;
