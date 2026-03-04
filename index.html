@@ -42,9 +42,7 @@
       z-index: 9999;
     }
 
-    /* APP */
-    #app { display: flex; flex-direction: column; height: 100vh; }
-
+    /* TOP BAR */
     .topbar {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
@@ -83,11 +81,21 @@
     }
     .topbar-stat { color: var(--dim); }
     .topbar-stat span { color: var(--green); font-weight: bold; }
-    .logout-btn { display: none; }
+    .refresh-status {
+      margin-left: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--dim);
+      letter-spacing: 0.08em;
+    }
+    .refresh-status.loading { color: var(--amber); }
+    .refresh-status.ok { color: var(--green); }
+    .refresh-status.error { color: var(--red); }
 
+    /* MAIN */
     .main {
       display: grid;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr 300px;
       flex: 1;
       overflow: hidden;
     }
@@ -95,6 +103,7 @@
     .leaflet-container { background: #080e08 !important; }
     .leaflet-tile { filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.6); }
 
+    /* SIDEBAR */
     .sidebar {
       background: var(--panel);
       border-left: 1px solid var(--border);
@@ -110,6 +119,13 @@
       font-size: 0.65rem;
       color: var(--green);
       letter-spacing: 0.2em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .contact-count {
+      color: var(--dim);
+      font-size: 0.6rem;
     }
     .contact-list {
       flex: 1;
@@ -118,7 +134,7 @@
       scrollbar-color: var(--border) transparent;
     }
     .contact-item {
-      padding: 0.7rem 1rem;
+      padding: 0.65rem 1rem;
       border-bottom: 1px solid rgba(255,255,255,0.04);
       display: flex;
       align-items: center;
@@ -127,200 +143,418 @@
       transition: background 0.15s;
     }
     .contact-item:hover { background: rgba(0,255,136,0.04); }
-    .contact-flag { font-size: 1.1rem; flex-shrink: 0; }
+    .contact-flag { font-size: 1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
     .contact-info { flex: 1; min-width: 0; }
     .contact-name {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       color: #fff;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .contact-meta { font-size: 0.72rem; color: var(--dim); margin-top: 1px; }
+    .contact-meta { font-size: 0.7rem; color: var(--dim); margin-top: 1px; }
     .contact-type {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.58rem;
-      padding: 0.15rem 0.4rem;
+      font-size: 0.55rem;
+      padding: 0.12rem 0.35rem;
       border-radius: 2px;
       flex-shrink: 0;
     }
-    .type-air { background: rgba(0,204,255,0.15); color: var(--blue); border: 1px solid rgba(0,204,255,0.3); }
-    .type-ground { background: rgba(255,170,0,0.15); color: var(--amber); border: 1px solid rgba(255,170,0,0.3); }
-    .type-naval { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+    .type-mil { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
 
+    /* DETAIL */
     .detail-panel {
       border-top: 1px solid var(--border);
-      padding: 1rem;
+      padding: 0.9rem 1rem;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.68rem;
-      min-height: 160px;
+      font-size: 0.66rem;
+      min-height: 175px;
       background: #080e08;
     }
     .detail-panel h4 {
       color: var(--green);
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       letter-spacing: 0.2em;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.65rem;
     }
     .detail-row {
       display: flex;
       justify-content: space-between;
-      padding: 0.3rem 0;
+      padding: 0.28rem 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
     .detail-row:last-child { border-bottom: none; }
     .detail-key { color: var(--dim); }
-    .detail-val { color: #fff; text-align: right; }
-    .no-select { color: var(--dim); font-size: 0.65rem; line-height: 1.8; }
+    .detail-val { color: #fff; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .no-select { color: var(--dim); font-size: 0.63rem; line-height: 1.9; }
 
-    .filter-bar {
-      padding: 0.6rem 1rem;
+    /* SEARCH */
+    .search-bar {
+      padding: 0.5rem 0.75rem;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      gap: 0.4rem;
     }
-    .filter-btn {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.6rem;
-      padding: 0.2rem 0.6rem;
+    .search-input {
+      width: 100%;
+      background: #080e08;
       border: 1px solid var(--border);
-      background: transparent;
-      color: var(--dim);
-      cursor: pointer;
-      letter-spacing: 0.1em;
-      transition: all 0.15s;
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.4rem 0.6rem;
+      outline: none;
+      letter-spacing: 0.05em;
+      transition: border-color 0.2s;
     }
-    .filter-btn:hover, .filter-btn.active {
-      border-color: var(--green-dim);
+    .search-input:focus { border-color: var(--green-dim); }
+    .search-input::placeholder { color: var(--dim); }
+
+    /* LOADING OVERLAY */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      gap: 1rem;
+    }
+    .loading-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.2rem;
+      font-weight: 900;
       color: var(--green);
-      background: rgba(0,255,136,0.05);
+      letter-spacing: 0.15em;
+      animation: pulse 1.5s ease-in-out infinite;
     }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .loading-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+    }
+    .loading-bar {
+      width: 200px;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .loading-bar::after {
+      content: '';
+      position: absolute;
+      left: -50%;
+      width: 50%;
+      height: 100%;
+      background: var(--green);
+      animation: slide 1s linear infinite;
+    }
+    @keyframes slide { to { left: 150%; } }
+
+    /* Marker */
     .mil-marker {
-      font-size: 1.1rem;
-      filter: drop-shadow(0 0 5px rgba(0,255,136,0.6));
-      animation: marker-pulse 2s ease-in-out infinite;
+      font-size: 1rem;
+      filter: drop-shadow(0 0 5px rgba(0,255,136,0.7));
+      cursor: pointer;
+      transition: transform 0.15s;
     }
-    @keyframes marker-pulse {
-      0%,100%{ filter: drop-shadow(0 0 4px rgba(0,255,136,0.5)); }
-      50%{ filter: drop-shadow(0 0 10px rgba(0,255,136,0.9)); }
+    .mil-marker:hover { transform: scale(1.3); }
+
+    /* Disclaimer */
+    .disclaimer {
+      position: fixed;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.55rem;
+      color: var(--dim);
+      letter-spacing: 0.05em;
+      z-index: 500;
+      pointer-events: none;
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
 
-  <!-- APP -->
-  <div id="app">
-    <div class="topbar">
-      <div class="topbar-title">MILITARY<span>TRACKER</span></div>
-      <div class="live-badge">● LIVE</div>
-      <div class="topbar-stats">
-        <div class="topbar-stat">AIRCRAFT: <span id="count-air">0</span></div>
-        <div class="topbar-stat">GROUND: <span id="count-ground">0</span></div>
-        <div class="topbar-stat">NATIONS: <span id="count-nations">0</span></div>
-      </div>
+  <!-- LOADING -->
+  <div id="loading-overlay">
+    <div class="loading-title">ACQUIRING CONTACTS...</div>
+    <div class="loading-bar"></div>
+    <div class="loading-sub">CONNECTING TO LIVE MILITARY FEED</div>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title">MILITARY<span>TRACKER</span></div>
+    <div class="live-badge">● LIVE</div>
+    <div class="topbar-stats">
+      <div class="topbar-stat">CONTACTS: <span id="count-total">0</span></div>
+      <div class="topbar-stat">NATIONS: <span id="count-nations">0</span></div>
     </div>
-    <div class="main">
-      <div id="map"></div>
-      <div class="sidebar">
-        <div class="sidebar-header">▌ ACTIVE CONTACTS</div>
-        <div class="filter-bar">
-          <button class="filter-btn active" onclick="setFilter('ALL',event)">ALL</button>
-          <button class="filter-btn" onclick="setFilter('AIR',event)">AIR</button>
-          <button class="filter-btn" onclick="setFilter('GROUND',event)">GROUND</button>
-          <button class="filter-btn" onclick="setFilter('NAVAL',event)">NAVAL</button>
-        </div>
-        <div class="contact-list" id="contact-list"></div>
-        <div class="detail-panel" id="detail-panel">
-          <h4>▌ CONTACT DETAILS</h4>
-          <div class="no-select">Select a contact from the list<br>or click a marker on the map<br>to view full details.</div>
-        </div>
+    <div class="refresh-status" id="refresh-status">INITIALIZING...</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div id="map"></div>
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>▌ ACTIVE CONTACTS</span>
+        <span class="contact-count" id="sidebar-count">0 CONTACTS</span>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" id="search-input" placeholder="SEARCH CALLSIGN / COUNTRY..." oninput="filterList()"/>
+      </div>
+      <div class="contact-list" id="contact-list"></div>
+      <div class="detail-panel" id="detail-panel">
+        <h4>▌ CONTACT DETAILS</h4>
+        <div class="no-select">Select a contact from the list<br>or click a marker on the map<br>to view full details.</div>
       </div>
     </div>
   </div>
 
+  <div class="disclaimer">
+    Independent tracker · Public ADS-B data only · Not affiliated with any government or military organization
+  </div>
+
 <script>
-  const vehicles = [
-    { id: 1, name: "B-52H Stratofortress", country: "United States", flag: "🇺🇸", type: "AIR", category: "Strategic Bomber", lat: 38.5, lng: -77.0, speed: "650 mph", alt: "50,000 ft" },
-    { id: 2, name: "F-22 Raptor", country: "United States", flag: "🇺🇸", type: "AIR", category: "Stealth Fighter", lat: 36.0, lng: -115.0, speed: "1,500 mph", alt: "65,000 ft" },
-    { id: 3, name: "M1A2 Abrams", country: "United States", flag: "🇺🇸", type: "GROUND", category: "Main Battle Tank", lat: 31.0, lng: 35.5, speed: "42 mph", alt: "Ground" },
-    { id: 4, name: "Su-57 Felon", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Stealth Fighter", lat: 55.7, lng: 37.6, speed: "1,320 mph", alt: "66,000 ft" },
-    { id: 5, name: "Ka-52 Alligator", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Attack Helicopter", lat: 48.5, lng: 35.0, speed: "186 mph", alt: "1,800 ft" },
-    { id: 6, name: "T-90M Proryv", country: "Russia", flag: "🇷🇺", type: "GROUND", category: "Main Battle Tank", lat: 49.0, lng: 36.5, speed: "37 mph", alt: "Ground" },
-    { id: 7, name: "J-20 Mighty Dragon", country: "China", flag: "🇨🇳", type: "AIR", category: "Stealth Fighter", lat: 25.0, lng: 121.5, speed: "1,305 mph", alt: "66,000 ft" },
-    { id: 8, name: "H-6K Badger", country: "China", flag: "🇨🇳", type: "AIR", category: "Strategic Bomber", lat: 22.0, lng: 114.0, speed: "620 mph", alt: "43,000 ft" },
-    { id: 9, name: "Type 99A MBT", country: "China", flag: "🇨🇳", type: "GROUND", category: "Main Battle Tank", lat: 30.0, lng: 120.0, speed: "50 mph", alt: "Ground" },
-    { id: 10, name: "Eurofighter Typhoon", country: "United Kingdom", flag: "🇬🇧", type: "AIR", category: "Multi-Role Fighter", lat: 51.5, lng: -1.5, speed: "1,320 mph", alt: "55,000 ft" },
-    { id: 11, name: "E-3 Sentry AWACS", country: "NATO", flag: "🌐", type: "AIR", category: "Early Warning Aircraft", lat: 50.0, lng: 10.0, speed: "530 mph", alt: "30,000 ft" },
-  ];
+// ═══════════════════════════════════════════
+// COUNTRY FLAG LOOKUP
+// ═══════════════════════════════════════════
+const countryFlags = {
+  'USA': '🇺🇸', 'UNITED STATES': '🇺🇸',
+  'RUS': '🇷🇺', 'RUSSIA': '🇷🇺',
+  'CHN': '🇨🇳', 'CHINA': '🇨🇳',
+  'GBR': '🇬🇧', 'UNITED KINGDOM': '🇬🇧',
+  'FRA': '🇫🇷', 'FRANCE': '🇫🇷',
+  'DEU': '🇩🇪', 'GERMANY': '🇩🇪',
+  'ITA': '🇮🇹', 'ITALY': '🇮🇹',
+  'JPN': '🇯🇵', 'JAPAN': '🇯🇵',
+  'KOR': '🇰🇷', 'SOUTH KOREA': '🇰🇷',
+  'AUS': '🇦🇺', 'AUSTRALIA': '🇦🇺',
+  'CAN': '🇨🇦', 'CANADA': '🇨🇦',
+  'ISR': '🇮🇱', 'ISRAEL': '🇮🇱',
+  'SAU': '🇸🇦', 'SAUDI ARABIA': '🇸🇦',
+  'TUR': '🇹🇷', 'TURKEY': '🇹🇷',
+  'IND': '🇮🇳', 'INDIA': '🇮🇳',
+  'PAK': '🇵🇰', 'PAKISTAN': '🇵🇰',
+  'IRN': '🇮🇷', 'IRAN': '🇮🇷',
+  'NLD': '🇳🇱', 'NETHERLANDS': '🇳🇱',
+  'NOR': '🇳🇴', 'NORWAY': '🇳🇴',
+  'POL': '🇵🇱', 'POLAND': '🇵🇱',
+  'SWE': '🇸🇪', 'SWEDEN': '🇸🇪',
+  'ESP': '🇪🇸', 'SPAIN': '🇪🇸',
+  'GRC': '🇬🇷', 'GREECE': '🇬🇷',
+  'BEL': '🇧🇪', 'BELGIUM': '🇧🇪',
+  'NATO': '🌐',
+};
 
-  let map, markers = {}, activeFilter = 'ALL';
-
-  window.onload = function() { initMap(); };
-
-  function initMap() {
-    if (map) return;
-    map = L.map('map', { center: [30, 30], zoom: 3, zoomControl: true, attributionControl: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
-    renderAll();
+function getFlag(country) {
+  if (!country) return '🎖️';
+  const upper = country.toUpperCase();
+  for (const [key, flag] of Object.entries(countryFlags)) {
+    if (upper.includes(key)) return flag;
   }
+  return '🎖️';
+}
 
-  function setFilter(f, event) {
-    activeFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    renderAll();
-  }
+// ═══════════════════════════════════════════
+// MAP SETUP
+// ═══════════════════════════════════════════
+const map = L.map('map', {
+  center: [30, 10],
+  zoom: 3,
+  zoomControl: true,
+  attributionControl: false
+});
 
-  function getIcon(type) { return { AIR: '✈', GROUND: '🚗', NAVAL: '⚓' }[type] || '●'; }
-  function getTypeClass(type) { return { AIR: 'type-air', GROUND: 'type-ground', NAVAL: 'type-naval' }[type] || 'type-air'; }
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18
+}).addTo(map);
 
-  function showDetail(v) {
-    document.getElementById('detail-panel').innerHTML = `
-      <h4>▌ CONTACT DETAILS</h4>
-      <div class="detail-row"><span class="detail-key">NAME</span><span class="detail-val">${v.name}</span></div>
-      <div class="detail-row"><span class="detail-key">COUNTRY</span><span class="detail-val">${v.flag} ${v.country}</span></div>
-      <div class="detail-row"><span class="detail-key">CLASS</span><span class="detail-val">${v.category}</span></div>
-      <div class="detail-row"><span class="detail-key">TYPE</span><span class="detail-val">${v.type}</span></div>
-      <div class="detail-row"><span class="detail-key">SPEED</span><span class="detail-val">${v.speed}</span></div>
-      <div class="detail-row"><span class="detail-key">ALTITUDE</span><span class="detail-val">${v.alt}</span></div>
-      <div class="detail-row"><span class="detail-key">POSITION</span><span class="detail-val">${v.lat.toFixed(2)}°, ${v.lng.toFixed(2)}°</span></div>
-    `;
-  }
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let allContacts = [];
+let markers = {};
+let selectedIcao = null;
+let searchQuery = '';
 
-  function renderAll() {
-    Object.values(markers).forEach(m => map.removeLayer(m));
-    markers = {};
-    const list = document.getElementById('contact-list');
-    list.innerHTML = '';
-    const filtered = vehicles.filter(v => activeFilter === 'ALL' || v.type === activeFilter);
-    document.getElementById('count-air').textContent = vehicles.filter(v => v.type === 'AIR').length;
-    document.getElementById('count-ground').textContent = vehicles.filter(v => v.type === 'GROUND').length;
-    document.getElementById('count-nations').textContent = [...new Set(vehicles.map(v => v.country))].length;
-    filtered.forEach(v => {
-      const icon = L.divIcon({
-        html: `<div class="mil-marker">${getIcon(v.type)}</div>`,
-        className: '', iconSize: [24, 24], iconAnchor: [12, 12]
-      });
-      const marker = L.marker([v.lat, v.lng], { icon })
-        .addTo(map)
-        .bindPopup(`<b>${v.flag} ${v.name}</b><br>${v.country}<br>${v.category}`)
-        .on('click', () => showDetail(v));
-      markers[v.id] = marker;
-      const row = document.createElement('div');
-      row.className = 'contact-item';
-      row.innerHTML = `
-        <span class="contact-flag">${v.flag}</span>
-        <div class="contact-info">
-          <div class="contact-name">${v.name}</div>
-          <div class="contact-meta">${v.country} · ${v.category}</div>
-        </div>
-        <span class="contact-type ${getTypeClass(v.type)}">${v.type}</span>
-      `;
-      row.onclick = () => { map.setView([v.lat, v.lng], 5); showDetail(v); markers[v.id].openPopup(); };
-      list.appendChild(row);
+// ═══════════════════════════════════════════
+// FETCH LIVE MILITARY DATA
+// ═══════════════════════════════════════════
+async function fetchMilitary() {
+  const status = document.getElementById('refresh-status');
+  status.textContent = 'FETCHING DATA...';
+  status.className = 'refresh-status loading';
+
+  try {
+    const response = await fetch('https://api.airplanes.live/v2/mil', {
+      headers: { 'Accept': 'application/json' }
     });
+
+    if (!response.ok) throw new Error('API error');
+
+    const data = await response.json();
+    const aircraft = data.ac || [];
+
+    // Filter valid contacts with position
+    allContacts = aircraft
+      .filter(a => a.lat && a.lon)
+      .map(a => ({
+        icao: a.hex || '',
+        callsign: (a.flight || a.r || a.hex || 'UNKNOWN').trim(),
+        country: a.cou || a.ownOp || '',
+        lat: parseFloat(a.lat),
+        lng: parseFloat(a.lon),
+        altitude: a.alt_baro ? `${parseInt(a.alt_baro).toLocaleString()} ft` : 'N/A',
+        speed: a.gs ? `${Math.round(a.gs)} kts` : 'N/A',
+        heading: a.track ? `${Math.round(a.track)}°` : 'N/A',
+        squawk: a.squawk || 'N/A',
+        type: a.t || a.desc || 'MILITARY',
+        registration: a.r || 'N/A',
+        flag: getFlag(a.cou || a.ownOp || ''),
+      }));
+
+    // Update counts
+    document.getElementById('count-total').textContent = allContacts.length;
+    const nations = new Set(allContacts.map(c => c.country).filter(Boolean));
+    document.getElementById('count-nations').textContent = nations.size;
+    document.getElementById('sidebar-count').textContent = `${allContacts.length} CONTACTS`;
+
+    updateMarkers();
+    updateSidebar();
+
+    status.textContent = `UPDATED ${new Date().toLocaleTimeString()}`;
+    status.className = 'refresh-status ok';
+
+    // Hide loading overlay
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+  } catch (err) {
+    console.error('Fetch error:', err);
+    status.textContent = 'CONNECTION ERROR — RETRYING...';
+    status.className = 'refresh-status error';
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
   }
+}
+
+// ═══════════════════════════════════════════
+// UPDATE MAP MARKERS
+// ═══════════════════════════════════════════
+function updateMarkers() {
+  // Remove old markers
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  allContacts.forEach(c => {
+    const rotation = c.heading ? parseInt(c.heading) : 0;
+    const icon = L.divIcon({
+      html: `<div class="mil-marker" style="transform:rotate(${rotation}deg)" title="${c.callsign}">✈</div>`,
+      className: '',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+
+    const marker = L.marker([c.lat, c.lng], { icon })
+      .addTo(map)
+      .on('click', () => {
+        selectedIcao = c.icao;
+        showDetail(c);
+        highlightContact(c.icao);
+      });
+
+    markers[c.icao] = marker;
+  });
+}
+
+// ═══════════════════════════════════════════
+// UPDATE SIDEBAR LIST
+// ═══════════════════════════════════════════
+function updateSidebar() {
+  filterList();
+}
+
+function filterList() {
+  searchQuery = document.getElementById('search-input').value.toLowerCase();
+  const list = document.getElementById('contact-list');
+  list.innerHTML = '';
+
+  const filtered = allContacts.filter(c =>
+    !searchQuery ||
+    c.callsign.toLowerCase().includes(searchQuery) ||
+    c.country.toLowerCase().includes(searchQuery) ||
+    c.type.toLowerCase().includes(searchQuery)
+  );
+
+  // Sort by callsign
+  filtered.sort((a, b) => a.callsign.localeCompare(b.callsign));
+
+  filtered.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'contact-item';
+    row.id = `contact-${c.icao}`;
+    row.innerHTML = `
+      <span class="contact-flag">${c.flag}</span>
+      <div class="contact-info">
+        <div class="contact-name">${c.callsign}</div>
+        <div class="contact-meta">${c.country || 'UNKNOWN'} · ${c.altitude}</div>
+      </div>
+      <span class="contact-type type-mil">MIL</span>
+    `;
+    row.onclick = () => {
+      selectedIcao = c.icao;
+      map.setView([c.lat, c.lng], 6);
+      showDetail(c);
+      highlightContact(c.icao);
+      if (markers[c.icao]) markers[c.icao].openPopup();
+    };
+    list.appendChild(row);
+  });
+}
+
+function highlightContact(icao) {
+  document.querySelectorAll('.contact-item').forEach(el => {
+    el.style.background = '';
+  });
+  const el = document.getElementById(`contact-${icao}`);
+  if (el) {
+    el.style.background = 'rgba(0,255,136,0.08)';
+    el.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+// ═══════════════════════════════════════════
+// DETAIL PANEL
+// ═══════════════════════════════════════════
+function showDetail(c) {
+  document.getElementById('detail-panel').innerHTML = `
+    <h4>▌ CONTACT DETAILS</h4>
+    <div class="detail-row"><span class="detail-key">CALLSIGN</span><span class="detail-val">${c.callsign}</span></div>
+    <div class="detail-row"><span class="detail-key">COUNTRY</span><span class="detail-val">${c.flag} ${c.country || 'UNKNOWN'}</span></div>
+    <div class="detail-row"><span class="detail-key">TYPE</span><span class="detail-val">${c.type}</span></div>
+    <div class="detail-row"><span class="detail-key">REG</span><span class="detail-val">${c.registration}</span></div>
+    <div class="detail-row"><span class="detail-key">ALTITUDE</span><span class="detail-val">${c.altitude}</span></div>
+    <div class="detail-row"><span class="detail-key">SPEED</span><span class="detail-val">${c.speed}</span></div>
+    <div class="detail-row"><span class="detail-key">HEADING</span><span class="detail-val">${c.heading}</span></div>
+    <div class="detail-row"><span class="detail-key">SQUAWK</span><span class="detail-val">${c.squawk}</span></div>
+    <div class="detail-row"><span class="detail-key">ICAO</span><span class="detail-val">${c.icao.toUpperCase()}</span></div>
+    <div class="detail-row"><span class="detail-key">POSITION</span><span class="detail-val">${c.lat.toFixed(3)}°, ${c.lng.toFixed(3)}°</span></div>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// AUTO REFRESH EVERY 30 SECONDS
+// ═══════════════════════════════════════════
+fetchMilitary();
+setInterval(fetchMilitary, 30000);
 </script>
 </body>
 </html>
