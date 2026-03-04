@@ -1,898 +1,752 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Military Tracker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MilitaryTracker.net — Global Aircraft Intelligence</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg:       #060a0f;
-      --panel:    #0b1018;
-      --border:   #152015;
-      --green:    #00ff88;
-      --gdim:     #00aa55;
-      --amber:    #ffaa00;
-      --red:      #ff3344;
-      --blue:     #00ccff;
-      --purple:   #bb77ff;
-      --teal:     #00ffcc;
-      --text:     #b8ccb8;
-      --dim:      #445544;
-    }
-    * { margin:0; padding:0; box-sizing:border-box; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Rajdhani', sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      --bg: #070a0d;
+      --surface: #0c1118;
+      --surface2: #111820;
+      --border: #1c2535;
+      --mil: #00ff88;
+      --mil-dim: rgba(0,255,136,0.5);
+      --civ: #22aaff;
+      --civ-dim: rgba(34,170,255,0.5);
+      --text: #b8c8d8;
+      --text-dim: #4a5f78;
+      --warn: #ff9900;
+      --danger: #ff3344;
+      --header-h: 58px;
+      --bar-h: 30px;
     }
 
-    /* scanlines */
-    body::after {
-      content:'';
-      position:fixed; inset:0;
-      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,100,.01) 2px,rgba(0,255,100,.01) 4px);
-      pointer-events:none;
-      z-index:9999;
-    }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); }
 
-    /* ── TOP BAR ─────────────────────────────── */
-    #topbar {
-      background: var(--panel);
+    body { font-family: 'Share Tech Mono', monospace; color: var(--text); }
+
+    /* ===== LOADING ===== */
+    #loading {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; transition: opacity 0.6s ease;
+    }
+    #loading.fade { opacity: 0; pointer-events: none; }
+
+    .radar-ring {
+      position: relative; width: 90px; height: 90px; margin-bottom: 24px;
+    }
+    .radar-ring::before, .radar-ring::after {
+      content: ''; position: absolute; border-radius: 50%;
+      border: 1px solid rgba(0,255,136,0.15);
+    }
+    .radar-ring::before { inset: 0; }
+    .radar-ring::after { inset: 15px; border-color: rgba(0,255,136,0.25); }
+    .radar-center {
+      position: absolute; inset: 30px;
+      background: radial-gradient(circle, rgba(0,255,136,0.4), transparent 70%);
+      border-radius: 50%;
+    }
+    .radar-sweep {
+      position: absolute; top: 50%; left: 50%; width: 44px; height: 1px;
+      background: linear-gradient(to right, transparent, var(--mil));
+      transform-origin: left center;
+      animation: sweep 1.8s linear infinite;
+      box-shadow: 0 0 8px var(--mil);
+    }
+    @keyframes sweep { to { transform: rotate(360deg); } }
+
+    .load-text {
+      font-size: 12px; letter-spacing: 4px; color: var(--mil);
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    .load-sub { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin-top: 6px; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ===== HEADER ===== */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
+      background: rgba(7,10,13,0.97);
       border-bottom: 1px solid var(--border);
-      padding: .45rem 1rem;
-      display: flex;
-      align-items: center;
-      gap: .9rem;
-      flex-shrink: 0;
-      flex-wrap: wrap;
-      z-index: 100;
+      display: flex; align-items: center; gap: 16px; padding: 0 16px;
+      z-index: 1000; backdrop-filter: blur(12px);
     }
+
     .logo {
-      font-family: 'Orbitron', monospace;
-      font-size: .9rem;
-      font-weight: 900;
-      color: var(--green);
-      letter-spacing: .1em;
-      white-space: nowrap;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 17px; font-weight: 700; letter-spacing: 3px;
+      color: var(--mil); white-space: nowrap;
+      text-shadow: 0 0 20px rgba(0,255,136,0.35);
+      display: flex; align-items: center; gap: 8px;
     }
-    .logo span { color:#fff; }
-    .live-pill {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .6rem;
-      border: 1px solid var(--red);
-      color: var(--red);
-      padding: .15rem .5rem;
-      letter-spacing: .15em;
-      animation: blink 1.2s step-end infinite;
+    .logo-icon {
+      width: 28px; height: 28px; border: 1px solid var(--mil);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--mil);
+      position: relative;
     }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .logo-icon::before {
+      content: ''; position: absolute; inset: 3px;
+      border: 1px solid rgba(0,255,136,0.3); border-radius: 50%;
+      animation: spin 8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .logo span { color: var(--text-dim); }
 
-    .counters {
-      display: flex;
-      gap: .7rem;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .62rem;
-      flex-wrap: wrap;
-    }
-    .counter { color: var(--dim); white-space: nowrap; }
-    .counter b { font-weight:700; }
-    .c-air b    { color: var(--blue); }
-    .c-helo b   { color: var(--amber); }
-    .c-drone b  { color: var(--purple); }
-    .c-ship b   { color: var(--teal); }
-    .c-total b  { color: var(--green); }
-
-    #status {
-      margin-left: auto;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .58rem;
-      color: var(--dim);
-      white-space: nowrap;
-    }
-    #status.ok    { color: var(--green); }
-    #status.busy  { color: var(--amber); }
-    #status.err   { color: var(--red); }
-
-    /* ── FILTER TABS ─────────────────────────── */
-    #tabs {
-      background: #070c07;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      padding: 0 .8rem;
-      flex-shrink: 0;
-    }
-    .tab {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .6rem;
-      padding: .42rem .85rem;
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--dim);
-      cursor: pointer;
-      letter-spacing: .1em;
-      transition: color .15s, border-color .15s;
-      white-space: nowrap;
-    }
-    .tab:hover { color: var(--text); }
-    .tab.on-all   { color: var(--green);  border-color: var(--green); }
-    .tab.on-air   { color: var(--blue);   border-color: var(--blue); }
-    .tab.on-helo  { color: var(--amber);  border-color: var(--amber); }
-    .tab.on-drone { color: var(--purple); border-color: var(--purple); }
-    .tab.on-ship  { color: var(--teal);   border-color: var(--teal); }
-
-    /* ── LAYOUT ──────────────────────────────── */
-    #layout {
-      display: grid;
-      grid-template-columns: 1fr 300px;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    /* ── MAP ─────────────────────────────────── */
-    #map { height:100%; z-index:1; }
-    .leaflet-container { background:#080e08 !important; }
-    .leaflet-tile { filter: invert(1) hue-rotate(180deg) saturate(.35) brightness(.55); }
-    .leaflet-popup-content-wrapper {
-      background: var(--panel);
+    .tab-group {
+      display: flex; gap: 2px;
+      background: var(--surface2); padding: 4px; border-radius: 6px;
       border: 1px solid var(--border);
-      border-radius: 2px;
-      color: var(--text);
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .7rem;
-      box-shadow: 0 0 20px rgba(0,255,136,.1);
     }
-    .leaflet-popup-tip { background: var(--panel); }
+    .tab-btn {
+      padding: 7px 20px;
+      font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600;
+      letter-spacing: 2px; border: none; border-radius: 4px; cursor: pointer;
+      background: transparent; color: var(--text-dim);
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
+    .tab-btn.active.mil { background: var(--mil); color: #000; }
+    .tab-btn.active.civ { background: var(--civ); color: #000; }
 
-    /* map legend */
-    #legend {
-      position: absolute;
-      bottom: 30px; left: 10px;
-      background: rgba(6,10,15,.93);
-      border: 1px solid var(--border);
-      padding: .55rem .8rem;
-      z-index: 400;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .58rem;
+    .header-stats {
+      margin-left: auto; display: flex; align-items: center; gap: 20px;
+      font-size: 11px; color: var(--text-dim);
     }
-    #legend h5 { color: var(--green); letter-spacing:.15em; margin-bottom:.35rem; font-size:.56rem; }
-    .leg-row { display:flex; align-items:center; gap:.45rem; padding:.12rem 0; }
-    .leg-icon { width:1.1rem; text-align:center; font-size:.85rem; }
+    .hstat { display: flex; align-items: center; gap: 6px; }
+    .hstat-val { font-size: 20px; font-weight: bold; color: var(--mil); line-height: 1; }
+    .hstat-val.civ { color: var(--civ); }
+    .hstat-label { font-size: 10px; letter-spacing: 1px; }
 
-    /* ── SIDEBAR ─────────────────────────────── */
-    #sidebar {
-      background: var(--panel);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--mil); box-shadow: 0 0 6px var(--mil);
+      animation: pulse 2s infinite;
     }
-    #sb-header {
-      padding: .6rem .9rem;
-      border-bottom: 1px solid var(--border);
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .6rem;
-      color: var(--green);
-      letter-spacing: .18em;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    #sb-count { color: var(--dim); font-size:.56rem; }
+    .live-dot.civ { background: var(--civ); box-shadow: 0 0 6px var(--civ); }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
 
-    #search-wrap { padding:.45rem .7rem; border-bottom:1px solid var(--border); }
-    #search {
-      width: 100%;
-      background: #080e08;
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .62rem;
-      padding: .35rem .55rem;
-      outline: none;
-      transition: border-color .2s;
-    }
-    #search:focus { border-color: var(--gdim); }
-    #search::placeholder { color: var(--dim); }
-
-    #contact-list {
-      flex: 1;
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    .row {
-      padding: .58rem .9rem;
-      border-bottom: 1px solid rgba(255,255,255,.03);
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-      cursor: pointer;
-      transition: background .12s;
-    }
-    .row:hover { background: rgba(0,255,136,.04); }
-    .row.selected { background: rgba(0,255,136,.07); }
-    .row-flag { font-size:.9rem; flex-shrink:0; width:1.2rem; text-align:center; }
-    .row-info { flex:1; min-width:0; }
-    .row-name {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .67rem;
-      color: #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .row-meta { font-size:.67rem; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .badge {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .52rem;
-      padding: .1rem .3rem;
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-    .b-air   { color:var(--blue);   border:1px solid rgba(0,204,255,.3);   background:rgba(0,204,255,.08); }
-    .b-helo  { color:var(--amber);  border:1px solid rgba(255,170,0,.3);   background:rgba(255,170,0,.08); }
-    .b-drone { color:var(--purple); border:1px solid rgba(187,119,255,.3); background:rgba(187,119,255,.08); }
-    .b-ship  { color:var(--teal);   border:1px solid rgba(0,255,204,.3);   background:rgba(0,255,204,.08); }
-
-    /* ── DETAIL PANEL ────────────────────────── */
-    #detail {
-      border-top: 1px solid var(--border);
-      padding: .8rem .9rem;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .63rem;
-      background: #070c07;
-      min-height: 185px;
-    }
-    #detail h4 { font-size:.58rem; letter-spacing:.18em; margin-bottom:.55rem; }
-    .dr { display:flex; justify-content:space-between; padding:.25rem 0; border-bottom:1px solid rgba(255,255,255,.035); }
-    .dr:last-child { border:none; }
-    .dk { color:var(--dim); }
-    .dv { color:#fff; text-align:right; max-width:58%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    #detail .hint { color:var(--dim); font-size:.6rem; line-height:1.9; }
-
-    /* ── DISCLAIMER ──────────────────────────── */
-    #disc {
+    /* ===== MAP ===== */
+    #map {
       position: fixed;
-      bottom: 6px; left:50%; transform:translateX(-50%);
-      font-family: 'Share Tech Mono', monospace;
-      font-size: .5rem;
-      color: var(--dim);
+      top: var(--header-h); left: 0; right: 0;
+      bottom: var(--bar-h);
+    }
+
+    /* Subtle scanline */
+    #map::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 400;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px);
+    }
+
+    /* ===== AIRCRAFT PANEL ===== */
+    #ac-panel {
+      position: fixed;
+      top: calc(var(--header-h) + 10px); right: 10px;
+      width: 280px;
+      background: rgba(7,10,13,0.96); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0;
+      z-index: 1001; backdrop-filter: blur(20px);
+      transform: translateX(300px); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      overflow: hidden;
+    }
+    #ac-panel.open { transform: translateX(0); }
+
+    .panel-head {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: flex-start;
+      position: relative;
+    }
+    .panel-head::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--mil); transition: background 0.3s;
+    }
+    #ac-panel.civ .panel-head::before { background: var(--civ); }
+
+    .panel-callsign {
+      font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700;
+      color: var(--mil); letter-spacing: 2px; line-height: 1;
+    }
+    #ac-panel.civ .panel-callsign { color: var(--civ); }
+    .panel-actype {
+      font-size: 11px; color: var(--text-dim); letter-spacing: 2px;
+      margin-top: 3px;
+    }
+    .panel-close {
+      background: none; border: none; color: var(--text-dim); font-size: 16px;
+      cursor: pointer; line-height: 1; padding: 2px 4px; flex-shrink: 0;
+    }
+    .panel-close:hover { color: var(--text); }
+
+    .panel-body { padding: 12px 16px; }
+
+    .prow {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 12px;
+    }
+    .prow:last-child { border-bottom: none; }
+    .plabel { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
+    .pval { color: var(--text); font-size: 12px; }
+    .pval.accent { color: var(--mil); font-size: 14px; font-weight: bold; }
+    #ac-panel.civ .pval.accent { color: var(--civ); }
+
+    .panel-country {
+      margin-top: 10px; padding: 8px 12px;
+      background: rgba(255,255,255,0.03); border-radius: 4px;
+      font-size: 11px; color: var(--text-dim); letter-spacing: 1px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ===== LEGEND ===== */
+    #legend {
+      position: fixed; bottom: calc(var(--bar-h) + 10px); left: 10px;
+      background: rgba(7,10,13,0.92); border: 1px solid var(--border);
+      border-radius: 6px; padding: 12px 14px;
+      z-index: 1000; font-size: 11px; min-width: 148px;
+    }
+    .leg-title { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 8px; }
+    .leg-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text-dim); }
+    .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ===== BOTTOM BAR ===== */
+    #bot-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; height: var(--bar-h);
+      background: rgba(7,10,13,0.97); border-top: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 16px; gap: 24px;
+      z-index: 1000; font-size: 11px; color: var(--text-dim);
+    }
+    .bstat strong { color: var(--text); }
+    .bstat span { margin-right: 5px; }
+    .refresh-area { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    #refresh-bar {
+      width: 80px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+    }
+    #refresh-fill {
+      height: 100%; background: var(--mil); width: 100%;
+      transition: width 1s linear;
+    }
+    #ac-panel.civ ~ #bot-bar #refresh-fill { background: var(--civ); }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed; top: calc(var(--header-h) + 10px); left: 50%;
+      transform: translateX(-50%) translateY(-60px);
+      background: rgba(255,51,68,0.12); border: 1px solid rgba(255,51,68,0.3);
+      color: #ff7788; padding: 7px 16px; border-radius: 4px;
+      font-size: 11px; letter-spacing: 1px; z-index: 2000;
+      transition: transform 0.3s;
       pointer-events: none;
-      white-space: nowrap;
-      z-index: 500;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ===== LEAFLET OVERRIDES ===== */
+    .leaflet-control-zoom {
+      border: 1px solid var(--border) !important;
+      margin-bottom: 40px !important;
+    }
+    .leaflet-control-zoom a {
+      background: var(--surface) !important; color: var(--text) !important;
+      border-bottom: 1px solid var(--border) !important; width: 28px !important; height: 28px !important;
+      line-height: 28px !important;
+    }
+    .leaflet-control-zoom a:hover { background: var(--border) !important; }
+    .leaflet-control-attribution {
+      background: rgba(7,10,13,0.8) !important; color: var(--text-dim) !important; font-size: 9px !important;
+    }
+    .leaflet-control-attribution a { color: var(--text-dim) !important; }
+    .aircraft-icon { cursor: pointer; }
+    .aircraft-icon:hover { filter: brightness(1.4); }
+
+    /* ===== COORD CROSSHAIR ===== */
+    #coords {
+      position: fixed; bottom: calc(var(--bar-h) + 10px); right: 10px;
+      background: rgba(7,10,13,0.85); border: 1px solid var(--border);
+      padding: 5px 10px; font-size: 11px; border-radius: 4px; z-index: 1000;
+      color: var(--text-dim); pointer-events: none; letter-spacing: 1px;
     }
   </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div id="topbar">
-  <div class="logo">MILITARY<span>TRACKER</span></div>
-  <div class="live-pill">● LIVE</div>
-  <div class="counters">
-    <div class="counter c-air">  ✈ AIR <b id="n-air">0</b></div>
-    <div class="counter c-helo"> 🚁 HELO <b id="n-helo">0</b></div>
-    <div class="counter c-drone">⬡ UAV <b id="n-drone">0</b></div>
-    <div class="counter c-ship"> ⚓ NAVAL <b id="n-ship">0</b></div>
-    <div class="counter c-total">▌ TOTAL <b id="n-total">0</b></div>
+<!-- LOADING -->
+<div id="loading">
+  <div class="radar-ring">
+    <div class="radar-center"></div>
+    <div class="radar-sweep"></div>
   </div>
-  <div id="status">STARTING...</div>
+  <div class="load-text">ACQUIRING TARGETS</div>
+  <div class="load-sub">INITIALIZING ADS-B FEED...</div>
 </div>
 
-<!-- FILTER TABS -->
-<div id="tabs">
-  <button class="tab on-all"  onclick="setTab('ALL',  this)">◈ ALL</button>
-  <button class="tab"         onclick="setTab('AIR',  this)">✈ AIRCRAFT</button>
-  <button class="tab"         onclick="setTab('HELO', this)">🚁 HELICOPTER</button>
-  <button class="tab"         onclick="setTab('DRONE',this)">⬡ DRONE/UAV</button>
-  <button class="tab"         onclick="setTab('SHIP', this)">⚓ NAVAL</button>
-</div>
-
-<!-- LAYOUT -->
-<div id="layout">
-
-  <!-- MAP -->
-  <div id="map">
-    <div id="legend">
-      <h5>▌ CONTACT TYPES</h5>
-      <div class="leg-row"><span class="leg-icon" style="color:var(--blue)">✈</span><span>Fixed Wing</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:var(--amber)">🚁</span><span>Helicopter</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:var(--purple)">⬡</span><span>Drone / UAV</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:var(--teal)">⬛</span><span>Naval Vessel</span></div>
-      <div style="margin-top:.4rem;color:var(--dim);font-size:.55rem;border-top:1px solid var(--border);padding-top:.35rem">
-        Click contact to show trail
-      </div>
-    </div>
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⊕</div>
+    MILITARY<span>TRACKER</span>.NET
   </div>
 
-  <!-- SIDEBAR -->
-  <div id="sidebar">
-    <div id="sb-header">
-      <span>▌ ACTIVE CONTACTS</span>
-      <span id="sb-count">—</span>
-    </div>
-    <div id="search-wrap">
-      <input id="search" placeholder="SEARCH CALLSIGN · COUNTRY · TYPE..." oninput="renderList()"/>
-    </div>
-    <div id="contact-list"></div>
-    <div id="detail">
-      <h4 style="color:var(--green)">▌ CONTACT DETAILS</h4>
-      <div class="hint">Click any contact on the map<br>or in the list to view details.<br>Click again to toggle trail.</div>
-    </div>
+  <div class="tab-group">
+    <button class="tab-btn active mil" id="tab-mil" onclick="switchTab('military')">✦ MILITARY</button>
+    <button class="tab-btn civ" id="tab-civ" onclick="switchTab('civil')">✈ CIVIL AVIATION</button>
   </div>
 
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="status-txt" style="letter-spacing:1px;font-size:11px;">CONNECTING</span>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="ac-total">0</div>
+      <div><div class="hstat-label">TOTAL</div><div class="hstat-label">AIRCRAFT</div></div>
+    </div>
+    <div class="hstat" style="padding-left:10px; border-left:1px solid var(--border);">
+      <div id="last-update" style="font-size:10px; letter-spacing:1px; color: var(--text-dim);">—</div>
+    </div>
+  </div>
+</header>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- AIRCRAFT PANEL -->
+<div id="ac-panel">
+  <div class="panel-head">
+    <div>
+      <div class="panel-callsign" id="p-cs">———</div>
+      <div class="panel-actype" id="p-at">AIRCRAFT TYPE UNKNOWN</div>
+    </div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body">
+    <div class="prow"><span class="plabel">ICAO HEX</span><span class="pval" id="p-icao">—</span></div>
+    <div class="prow"><span class="plabel">ALTITUDE</span><span class="pval accent" id="p-alt">—</span></div>
+    <div class="prow"><span class="plabel">GROUND SPEED</span><span class="pval" id="p-spd">—</span></div>
+    <div class="prow"><span class="plabel">HEADING</span><span class="pval" id="p-hdg">—</span></div>
+    <div class="prow"><span class="plabel">VERTICAL RATE</span><span class="pval" id="p-vr">—</span></div>
+    <div class="prow"><span class="plabel">SQUAWK</span><span class="pval" id="p-sq">—</span></div>
+    <div class="prow"><span class="plabel">REGISTRATION</span><span class="pval" id="p-reg">—</span></div>
+    <div class="prow"><span class="plabel">POSITION</span><span class="pval" id="p-pos" style="font-size:11px;">—</span></div>
+    <div class="panel-country" id="p-ctry">🌐 Unknown Country</div>
+  </div>
 </div>
 
-<div id="disc">Independent tracker · Public ADS-B & AIS data · Not affiliated with any government or military organization</div>
+<!-- LEGEND (Military only) -->
+<div id="legend">
+  <div class="leg-title">ICON LEGEND</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#00ff88"></div>Fighter / Jet</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ffcc00"></div>Transport / Tanker</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ff6600"></div>Helicopter / Rotary</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ff44aa"></div>UAV / Drone</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#44bbff"></div>Maritime Patrol</div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bot-bar">
+  <div class="bstat"><span>MODE</span><strong id="b-mode">MILITARY</strong></div>
+  <div class="bstat"><span>AIRBORNE</span><strong id="b-air">0</strong></div>
+  <div class="bstat"><span>ON GROUND</span><strong id="b-gnd">0</strong></div>
+  <div class="refresh-area">
+    REFRESH IN <strong id="b-timer">30</strong>s
+    <div id="refresh-bar"><div id="refresh-fill"></div></div>
+  </div>
+</div>
+
+<!-- COORDS DISPLAY -->
+<div id="coords">LAT — LON —</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
 
 <script>
-'use strict';
+// ==================== CONFIG ====================
+const REFRESH_SEC = 30;
+const MAX_HIST = 40;
+const MIL_API  = 'https://api.adsb.lol/v2/mil';
+const CIV_API  = 'https://opensky-network.org/api/states/all';
 
-// ════════════════════════════════════════════════════════
-//  AIS KEY  ← paste your aisstream.io key between the quotes
-// ════════════════════════════════════════════════════════
-const AIS_KEY = 'YOUR_API_KEY_HERE';
+// ==================== STATE ====================
+let map, tracerGroup;
+let markers = {};
+let posHist = {};        // icao -> [{lat, lon}]
+let selectedIcao = null;
+let currentTab = 'military';
+let refreshTimer, countdownTimer, countdownVal = REFRESH_SEC;
 
-// ════════════════════════════════════════════════════════
-//  COUNTRY DATABASE
-// ════════════════════════════════════════════════════════
-const COUNTRIES = {
-  'USA':{'n':'United States','f':'🇺🇸'},'CAN':{'n':'Canada','f':'🇨🇦'},
-  'MEX':{'n':'Mexico','f':'🇲🇽'},'GBR':{'n':'United Kingdom','f':'🇬🇧'},
-  'FRA':{'n':'France','f':'🇫🇷'},'DEU':{'n':'Germany','f':'🇩🇪'},
-  'ITA':{'n':'Italy','f':'🇮🇹'},'ESP':{'n':'Spain','f':'🇪🇸'},
-  'NLD':{'n':'Netherlands','f':'🇳🇱'},'BEL':{'n':'Belgium','f':'🇧🇪'},
-  'POL':{'n':'Poland','f':'🇵🇱'},'NOR':{'n':'Norway','f':'🇳🇴'},
-  'SWE':{'n':'Sweden','f':'🇸🇪'},'DNK':{'n':'Denmark','f':'🇩🇰'},
-  'FIN':{'n':'Finland','f':'🇫🇮'},'GRC':{'n':'Greece','f':'🇬🇷'},
-  'PRT':{'n':'Portugal','f':'🇵🇹'},'ROU':{'n':'Romania','f':'🇷🇴'},
-  'HUN':{'n':'Hungary','f':'🇭🇺'},'CZE':{'n':'Czech Republic','f':'🇨🇿'},
-  'SVK':{'n':'Slovakia','f':'🇸🇰'},'HRV':{'n':'Croatia','f':'🇭🇷'},
-  'BGR':{'n':'Bulgaria','f':'🇧🇬'},'AUT':{'n':'Austria','f':'🇦🇹'},
-  'CHE':{'n':'Switzerland','f':'🇨🇭'},'UKR':{'n':'Ukraine','f':'🇺🇦'},
-  'LTU':{'n':'Lithuania','f':'🇱🇹'},'LVA':{'n':'Latvia','f':'🇱🇻'},
-  'EST':{'n':'Estonia','f':'🇪🇪'},'BLR':{'n':'Belarus','f':'🇧🇾'},
-  'RUS':{'n':'Russia','f':'🇷🇺'},'CHN':{'n':'China','f':'🇨🇳'},
-  'JPN':{'n':'Japan','f':'🇯🇵'},'KOR':{'n':'South Korea','f':'🇰🇷'},
-  'PRK':{'n':'North Korea','f':'🇰🇵'},'IND':{'n':'India','f':'🇮🇳'},
-  'PAK':{'n':'Pakistan','f':'🇵🇰'},'THA':{'n':'Thailand','f':'🇹🇭'},
-  'VNM':{'n':'Vietnam','f':'🇻🇳'},'IDN':{'n':'Indonesia','f':'🇮🇩'},
-  'MYS':{'n':'Malaysia','f':'🇲🇾'},'PHL':{'n':'Philippines','f':'🇵🇭'},
-  'SGP':{'n':'Singapore','f':'🇸🇬'},'TWN':{'n':'Taiwan','f':'🇹🇼'},
-  'ISR':{'n':'Israel','f':'🇮🇱'},'SAU':{'n':'Saudi Arabia','f':'🇸🇦'},
-  'ARE':{'n':'UAE','f':'🇦🇪'},'TUR':{'n':'Turkey','f':'🇹🇷'},
-  'IRN':{'n':'Iran','f':'🇮🇷'},'IRQ':{'n':'Iraq','f':'🇮🇶'},
-  'JOR':{'n':'Jordan','f':'🇯🇴'},'KWT':{'n':'Kuwait','f':'🇰🇼'},
-  'QAT':{'n':'Qatar','f':'🇶🇦'},'EGY':{'n':'Egypt','f':'🇪🇬'},
-  'ZAF':{'n':'South Africa','f':'🇿🇦'},'NGA':{'n':'Nigeria','f':'🇳🇬'},
-  'MAR':{'n':'Morocco','f':'🇲🇦'},'DZA':{'n':'Algeria','f':'🇩🇿'},
-  'BRA':{'n':'Brazil','f':'🇧🇷'},'ARG':{'n':'Argentina','f':'🇦🇷'},
-  'CHL':{'n':'Chile','f':'🇨🇱'},'COL':{'n':'Colombia','f':'🇨🇴'},
-  'AUS':{'n':'Australia','f':'🇦🇺'},'NZL':{'n':'New Zealand','f':'🇳🇿'},
-  'NATO':{'n':'NATO','f':'🌐'},
+// ==================== MAP INIT ====================
+function initMap() {
+  map = L.map('map', {
+    center: [25, 10], zoom: 3,
+    minZoom: 2, maxZoom: 15,
+    zoomControl: true,
+    attributionControl: true
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+
+  tracerGroup = L.layerGroup().addTo(map);
+
+  map.on('click', () => { if (selectedIcao) closePanel(); });
+
+  map.on('mousemove', e => {
+    const {lat, lng} = e.latlng;
+    document.getElementById('coords').textContent =
+      `LAT ${lat.toFixed(3)}°  LON ${lng.toFixed(3)}°`;
+  });
+}
+
+// ==================== ICON FACTORY ====================
+const COLORS = {
+  fighter:   '#00ff88',
+  transport: '#ffcc00',
+  helicopter:'#ff6600',
+  uav:       '#ff44aa',
+  maritime:  '#44bbff',
+  civil:     '#22aaff',
 };
 
-// native-name → ISO code
-const NATIVE = {
-  'DEUTSCHLAND':'DEU','РОССИЯ':'RUS','RUSSLAND':'DEU','中国':'CHN',
-  '日本':'JPN','한국':'KOR','ESPAÑA':'ESP','ESPANA':'ESP',
-  'NEDERLAND':'NLD','ITALIA':'ITA','BRASIL':'BRA','POLSKA':'POL',
-  'SVERIGE':'SWE','NORGE':'NOR','DANMARK':'DNK','SUOMI':'FIN',
-  'TÜRKIYE':'TUR','TURKIYE':'TUR','ΕΛΛΆΔΑ':'GRC','УКРАЇНА':'UKR',
-  'ÖSTERREICH':'AUT','SCHWEIZ':'CHE','SUISSE':'CHE','BELGIQUE':'BEL',
-  'MAGYARORSZÁG':'HUN','HRVATSKA':'HRV','SRBIJA':'SRB',
-  'ROMÂNIA':'ROU','БЪЛГАРИЯ':'BGR','БЕЛАРУСЬ':'BLR',
-  'UNITED STATES':'USA','UNITED STATES OF AMERICA':'USA',
-  'UNITED KINGDOM':'GBR','GREAT BRITAIN':'GBR',
-  'SOUTH KOREA':'KOR','NORTH KOREA':'PRK',
-  'RUSSIA':'RUS','CHINA':'CHN','JAPAN':'JPN',
-  'FRANCE':'FRA','GERMANY':'DEU','ITALY':'ITA','SPAIN':'ESP',
-  'AUSTRALIA':'AUS','CANADA':'CAN','INDIA':'IND',
-  'TURKEY':'TUR','ISRAEL':'ISR','IRAN':'IRN',
-  'SAUDI ARABIA':'SAU','UKRAINE':'UKR','BRAZIL':'BRA',
-};
+function detectType(ac) {
+  const t = ((ac.type || ac.t) || '').toUpperCase();
+  const cs = ((ac.callsign || ac.flight) || '').toUpperCase().trim();
+  if (/H60|H47|UH-|AH-|CH-|B06|EC\d|HH-|MH-|SH-/.test(t) || cs.includes('HELO')) return 'helicopter';
+  if (/RQ-|MQ-|UAV|DRONE|GLOBAL HAWK/i.test(t) || cs.includes('UAV')) return 'uav';
+  if (/C17|C-17|C130|C-130|C5 |KC-|KC135|KC10|A400|C141|C5M|E767|B52/.test(t) ||
+      /^(RCH|REACH|ATLAS|EVAC|SPAR|SAM\d|AIR MOBILITY)/.test(cs)) return 'transport';
+  if (/P8|P-8|E2 |E-2|P3|P-3|CP-140|ATLANTIC/.test(t)) return 'maritime';
+  return 'fighter';
+}
 
-// English overrides for place names that come back in foreign languages
-const PLACE_EN = {
-  'москва':'Moscow','санкт-петербург':'Saint Petersburg','владивосток':'Vladivostok',
-  'мурманск':'Murmansk','новосибирск':'Novosibirsk','екатеринбург':'Yekaterinburg',
-  'красноярск':'Krasnoyarsk','хабаровск':'Khabarovsk','иркутск':'Irkutsk',
-  'калининград':'Kaliningrad','сочи':'Sochi','казань':'Kazan',
-  'волгоград':'Volgograd','ростов-на-дону':'Rostov-on-Don','воронеж':'Voronezh',
-  '北京':'Beijing','上海':'Shanghai','广州':'Guangzhou','深圳':'Shenzhen',
-  '成都':'Chengdu','重庆':'Chongqing','天津':'Tianjin','武汉':'Wuhan',
-  '西安':"Xi'an",'杭州':'Hangzhou','南京':'Nanjing','哈尔滨':'Harbin',
-  '东京':'Tokyo','大阪':'Osaka','横浜':'Yokohama','名古屋':'Nagoya',
-  '福岡':'Fukuoka','広島':'Hiroshima','京都':'Kyoto','神戸':'Kobe',
-  '서울':'Seoul','부산':'Busan','인천':'Incheon','대구':'Daegu',
-  'münchen':'Munich','köln':'Cologne','münchen':'Munich','nürnberg':'Nuremberg',
-  'münchen':'Munich','düsseldorf':'Dusseldorf','frankfur am main':'Frankfurt',
-  'paris':'Paris','marseille':'Marseille','lyon':'Lyon','toulouse':'Toulouse',
-  'roma':'Rome','milano':'Milan','napoli':'Naples','torino':'Turin',
-  'firenze':'Florence','venezia':'Venice','genova':'Genoa',
-  'madrid':'Madrid','barcelona':'Barcelona','sevilla':'Seville',
-  'الرياض':'Riyadh','جدة':'Jeddah','دبي':'Dubai','أبوظبي':'Abu Dhabi',
-  'القاهرة':'Cairo','الإسكندرية':'Alexandria','بغداد':'Baghdad',
-  'دمشق':'Damascus','بيروت':'Beirut','عمان':'Amman','الدوحة':'Doha',
-  'київ':'Kyiv','харків':'Kharkiv','одеса':'Odessa','львів':'Lviv',
-  'дніпро':'Dnipro','запоріжжя':'Zaporizhzhia',
-  'тихий океан':'Pacific Ocean','атлантический океан':'Atlantic Ocean',
-  'средиземное море':'Mediterranean Sea','чёрное море':'Black Sea',
-  'северный ледовитый океан':'Arctic Ocean','индийский океан':'Indian Ocean',
-  '南海':'South China Sea','东海':'East China Sea','黄海':'Yellow Sea',
-  '日本海':'Sea of Japan','太平洋':'Pacific Ocean','大西洋':'Atlantic Ocean',
-  'mer méditerranée':'Mediterranean Sea','océan atlantique':'Atlantic Ocean',
-  'mittelmeer':'Mediterranean Sea','atlantischer ozean':'Atlantic Ocean',
-  'московская область':'Moscow Oblast','краснодарский край':'Krasnodar Krai',
-  'приморский край':'Primorsky Krai','ленинградская область':'Leningrad Oblast',
-  'münchen':'Munich','île-de-france':'Ile-de-France','bayern':'Bavaria',
-  'nordrhein-westfalen':'North Rhine-Westphalia','sachsen':'Saxony',
-  '广东省':'Guangdong','四川省':'Sichuan','北京市':'Beijing','上海市':'Shanghai',
-};
+function mkIcon(ac, sel) {
+  const type = ac.isCivil ? 'civil' : detectType(ac);
+  const color = sel ? '#ff4455' : COLORS[type];
+  const hdg = (ac.heading || ac.track || 0);
+  const glow = `filter:drop-shadow(0 0 ${sel?6:3}px ${color})`;
 
-function toEnglish(str) {
-  if (!str) return str;
-  const key = str.toLowerCase().trim();
-  if (PLACE_EN[key]) return PLACE_EN[key];
-  // Check partial matches
-  for (const [k, v] of Object.entries(PLACE_EN)) {
-    if (key.includes(k)) return str.replace(new RegExp(k, 'gi'), v);
+  let shape;
+  if (type === 'helicopter') {
+    shape = `<circle cx="12" cy="12" r="3" fill="${color}"/>
+      <rect x="3" y="11.2" width="18" height="1.5" rx="1" fill="${color}" opacity="0.85"/>
+      <rect x="11.2" y="5" width="1.5" height="14" rx="1" fill="${color}" opacity="0.85"/>
+      <circle cx="12" cy="12" r="6" fill="none" stroke="${color}" stroke-width="0.8" opacity="0.35"/>`;
+  } else if (type === 'uav') {
+    shape = `<path d="M12 4 L20 12 L12 20 L4 12Z" fill="${color}" opacity="0.9"/>
+      <line x1="5" y1="5" x2="19" y2="19" stroke="${color}" stroke-width="0.8" opacity="0.5"/>
+      <line x1="19" y1="5" x2="5" y2="19" stroke="${color}" stroke-width="0.8" opacity="0.5"/>`;
+  } else {
+    shape = `<g transform="rotate(${hdg - 90} 12 12)">
+      <path d="M12 2 L10 9 L2 11.5 L10 13.5 L8 21 L12 19 L16 21 L14 13.5 L22 11.5 L14 9Z"
+        fill="${color}" opacity="0.92"/>
+    </g>`;
   }
-  return str;
+
+  const ring = sel ? `<circle cx="12" cy="12" r="11" fill="none" stroke="${color}" stroke-width="1" opacity="0.4" stroke-dasharray="3 2"/>` : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="${glow}">${shape}${ring}</svg>`;
+
+  return L.divIcon({ html: svg, className: 'aircraft-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
 }
 
-function countryInfo(raw) {
-  if (!raw) return { n: 'Unknown', f: '🎖️' };
-  const up = raw.toUpperCase().trim();
-  if (COUNTRIES[up]) return COUNTRIES[up];
-  const code = NATIVE[up];
-  if (code && COUNTRIES[code]) return COUNTRIES[code];
-  for (const [k, v] of Object.entries(COUNTRIES)) {
-    if (up === v.n.toUpperCase()) return v;
-    if (up.includes(v.n.toUpperCase()) || v.n.toUpperCase().includes(up)) return v;
-  }
-  for (const [k, v] of Object.entries(NATIVE)) {
-    if (up.includes(k)) return COUNTRIES[v] || { n: raw, f: '🎖️' };
-  }
-  return { n: raw, f: '🎖️' };
-}
-
-// ════════════════════════════════════════════════════════
-//  MILITARY FILTER  — strict, no civilians
-// ════════════════════════════════════════════════════════
-const CIV_OPS = [
-  'DELTA','UNITED','AMERICAN','SOUTHWEST','JETBLUE','SPIRIT','FRONTIER',
-  'ALASKA','ALLEGIANT','BREEZE','AVELO','LUFTHANSA','BRITISH AIRWAYS',
-  'AIR FRANCE','KLM','RYANAIR','EASYJET','WIZZ','NORWEGIAN','VUELING',
-  'IBERIA','SWISS','AUSTRIAN','FINNAIR','SAS','TAP','TURKISH AIRLINES',
-  'EMIRATES','ETIHAD','QATAR AIRWAYS','SINGAPORE AIRLINES','CATHAY',
-  'JAPAN AIRLINES','JAL','ANA','KOREAN AIR','AIR CANADA','QANTAS',
-  'VIRGIN','WESTJET','SUNWING','FEDEX','UPS','DHL','ATLAS AIR',
-  'AMAZON AIR','KALITTA','ABX','AEROMEXICO','AVIANCA','LATAM','GOL',
-  'AZUL','COPA','INDIGO','AIR INDIA','SPICEJET','NETJETS','FLEXJET',
-];
-
-const MIL_CALLSIGNS = [
-  'RCH','REACH','SAM','VENUS','EVAD','JAKE','ROCKY','BRONZE','STEEL',
-  'IRON','EAGLE','VIPER','KNIFE','MAKO','HOMER','COLT','GHOST','SHADOW',
-  'RAVEN','FALCON','HAWK','TALON','COBRA','RIDER','SWIFT','STORM',
-  'JOLLY','PEDRO','RESCUE','GUARD','SENTRY','RIVET','JSTAR','AWACS',
-  'SIGINT','RECON','ELINT','DRAGON','PYTHON','WOLF','BEAR','BISON',
-  'MAGIC','GLOBAL','HERKY','HERC','DARKSTAR','BONE','BUFF','WARTHOG',
-  'LANCER','SPIRIT','RAPTOR','HORNET','GROWLER','HAWKEYE','POSEIDON',
-  'TRITON','REAPER','PREDATOR','SENTINEL','BLACKHAWK','SEAHAWK',
-  'CHINOOK','OSPREY','APACHE','VENOM','CARACAL','COUGAR','PUMA','LYNX',
-  'WILDCAT','MERLIN','FLANKER','BACKFIRE','BLACKJACK','CANDID','CONDOR',
-  'HALO','HIND','BEAR','FORCE','NAVY','ARMY','MARINE','GUARD','PATROL',
-];
-
-const MIL_TYPES = [
-  'B52','B2','B1','F15','F16','F18','F22','F35','F117','A10','A400',
-  'C17','C130','C5','C141','C135','KC135','KC10','KC46','E3','E8',
-  'P8','P3','EP3','RC135','RQ4','MQ9','MQ1','U2','TR1','AC130',
-  'MC130','EC130','HC130','SU27','SU30','SU34','SU35','SU57',
-  'MIG29','MIG31','TU95','TU160','TU22','IL76','IL78','AN124',
-  'J10','J11','J15','J16','J20','H6','Y20','KA52','KA27','MI8',
-  'MI17','MI24','MI28','NH90','AW101','EH101','V22','MV22','CV22',
-];
-
-const MIL_KEYWORDS = [
-  'AIR FORCE','NAVY','NAVAL','ARMY','MARINE','COAST GUARD','MILITARY',
-  'DEFENCE','DEFENSE','LUFTWAFFE','AERONAUTICA','ROYAL AIR','AERIAL',
-  'AVIATION MILITAIRE','FUERZAS AEREAS','FUERZA AEREA','GUARDIA',
-  'BORDER PATROL','CUSTOMS','HOMELAND SECURITY',
-];
-
-function isMilitary(ac) {
-  const cs  = (ac.flight   || '').toUpperCase().trim();
-  const reg = (ac.r        || '').toUpperCase().trim();
-  const typ = (ac.t        || '').toUpperCase().trim();
-  const dsc = (ac.desc     || '').toUpperCase().trim();
-  const opr = (ac.ownOp   || '').toUpperCase().trim();
-
-  // Hard-reject civilian operators
-  for (const c of CIV_OPS) if (cs.includes(c) || opr.includes(c)) return false;
-  // Reject pure digits
-  if (/^\d+$/.test(cs)) return false;
-  // Reject standard airline pattern (2-3 letters + 1-4 digits) unless API flagged
-  if (/^[A-Z]{2,3}\d{1,4}[A-Z]?$/.test(cs) && !ac.mil) return false;
-
-  // Accept API-tagged military
-  if (ac.mil === true || ac.military === true) return true;
-  // Accept military callsign prefix
-  for (const m of MIL_CALLSIGNS) if (cs.startsWith(m)) return true;
-  // Accept military type code
-  for (const t of MIL_TYPES) if (typ.includes(t) || dsc.includes(t)) return true;
-  // Accept military operator keywords
-  for (const k of MIL_KEYWORDS) if (opr.includes(k) || cs.includes(k)) return true;
-
-  return false;
-}
-
-// ════════════════════════════════════════════════════════
-//  VEHICLE TYPE DETECTION
-// ════════════════════════════════════════════════════════
-const DRONE_IDS = ['RQ','MQ','UAV','UAS','DRONE','PREDATOR','REAPER','GLOBAL HAWK',
-  'TRITON','SENTINEL','BAYRAKTAR','TB2','AKINCI','HERON','WATCHKEEPER',
-  'HERMES','CH-4','CH-5','WING LOONG'];
-const HELO_IDS  = ['H60','UH60','SH60','MH60','AH64','AH1','UH1','CH47','CH53',
-  'NH90','EC725','H225','LYNX','WILDCAT','MERLIN','CHINOOK','BLACKHAWK',
-  'APACHE','SEAHAWK','PAVE HAWK','V22','MV22','KA52','KA27','MI8','MI17',
-  'MI24','MI28','TIGER','GAZELLE','PUMA','COUGAR','CARACAL','DAUPHIN'];
-
-function vehicleType(ac) {
-  const s = ((ac.t||'') + ' ' + (ac.desc||'')).toUpperCase();
-  for (const d of DRONE_IDS) if (s.includes(d)) return 'DRONE';
-  for (const h of HELO_IDS)  if (s.includes(h)) return 'HELO';
-  if (ac.desc && ac.desc[0] === 'H') return 'HELO';
-  return 'AIR';
-}
-
-const TYPE_COLOR = { AIR:'#00ccff', HELO:'#ffaa00', DRONE:'#bb77ff', SHIP:'#00ffcc' };
-const TYPE_ICON  = { AIR:'✈', HELO:'🚁', DRONE:'⬡', SHIP:'⬛' };
-const TYPE_BADGE = { AIR:'b-air', HELO:'b-helo', DRONE:'b-drone', SHIP:'b-ship' };
-const TYPE_LABEL = { AIR:'FIXED WING', HELO:'HELICOPTER', DRONE:'DRONE/UAV', SHIP:'NAVAL VESSEL' };
-
-// ════════════════════════════════════════════════════════
-//  GEOCODING  — always English
-// ════════════════════════════════════════════════════════
-const GEO_CACHE = {};
-async function geocode(lat, lng) {
-  const key = `${(lat*4|0)/4},${(lng*4|0)/4}`;
-  if (GEO_CACHE[key]) return GEO_CACHE[key];
+// ==================== FETCH ====================
+async function fetchMilitary() {
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en-US,en&namedetails=1`,
-      { headers:{'Accept-Language':'en-US,en;q=0.9'} }
-    );
+    const r = await fetch(MIL_API, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    const a = d.address || {};
-    const water = a.sea || a.ocean || a.bay || a.gulf || a.strait || '';
-    if (water) { GEO_CACHE[key] = toEnglish(water); return GEO_CACHE[key]; }
-    const city  = toEnglish(a.city || a.town || a.village || a.county || '');
-    const state = toEnglish(a.state || a.region || '');
-    const cntry = toEnglish(a.country || '');
-    const result = city && state ? `${city}, ${state}`
-                 : city          ? `${city}, ${cntry}`
-                 : state         ? `${state}, ${cntry}`
-                 : cntry         || 'International Waters';
-    GEO_CACHE[key] = result;
-    return result;
-  } catch { return '—'; }
-}
-
-// ════════════════════════════════════════════════════════
-//  MAP INIT
-// ════════════════════════════════════════════════════════
-const map = L.map('map', { center:[25,15], zoom:3, zoomControl:true, attributionControl:false });
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:18 }).addTo(map);
-
-// ════════════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════════════
-let contacts    = {};   // icao → contact object
-let markers     = {};   // icao → L.marker
-let trails      = {};   // icao → [[lat,lng],...]
-let trailLayers = {};   // icao → [L.polyline,...]
-let activeTab   = 'ALL';
-let selectedId  = null;
-let trailId     = null;
-
-// ════════════════════════════════════════════════════════
-//  RENDER MARKERS
-// ════════════════════════════════════════════════════════
-function renderMarkers() {
-  // clear old
-  Object.values(markers).forEach(m => map.removeLayer(m));
-  markers = {};
-  Object.values(trailLayers).forEach(segs => segs.forEach(l => map.removeLayer(l)));
-  trailLayers = {};
-
-  const list = Object.values(contacts).filter(c => activeTab === 'ALL' || c.type === activeTab);
-
-  list.forEach(c => {
-    // record trail position
-    if (c.type !== 'SHIP') {
-      if (!trails[c.id]) trails[c.id] = [];
-      const t = trails[c.id];
-      const last = t[t.length-1];
-      if (!last || last[0] !== c.lat || last[1] !== c.lng) {
-        t.push([c.lat, c.lng]);
-        if (t.length > 25) t.shift();
-      }
-    }
-
-    // draw trail only for selected contact
-    if (c.id === trailId && trails[c.id]?.length >= 2) {
-      const col = TYPE_COLOR[c.type];
-      const t   = trails[c.id];
-      const segs = [];
-      for (let i = 1; i < t.length; i++) {
-        const op = (i / t.length) * .85;
-        const wt = (i / t.length) * 3;
-        segs.push(L.polyline([t[i-1], t[i]], { color:col, weight:wt, opacity:op }).addTo(map));
-      }
-      trailLayers[c.id] = segs;
-    }
-
-    // marker icon
-    const col     = TYPE_COLOR[c.type];
-    const icn     = TYPE_ICON[c.type];
-    const hdg     = parseInt(c.heading) || 0;
-    const isSelected = c.id === selectedId;
-    const icon = L.divIcon({
-      html: `<div style="
-        font-size:${isSelected ? '1.15rem' : '.95rem'};
-        color:${col};
-        filter:drop-shadow(0 0 ${isSelected ? '8px' : '4px'} ${col});
-        transform:rotate(${hdg}deg);
-        cursor:pointer;
-        transition:all .2s;
-      ">${icn}</div>`,
-      className:'', iconSize:[20,20], iconAnchor:[10,10]
-    });
-
-    const m = L.marker([c.lat, c.lng], { icon })
-      .addTo(map)
-      .bindPopup(`
-        <div style="line-height:1.6">
-          <div style="color:${col};font-weight:bold">${c.flag} ${c.callsign}</div>
-          <div>${c.country}</div>
-          <div style="color:#666">${TYPE_LABEL[c.type]}</div>
-          <div style="color:#666;margin-top:2px">ALT: ${c.alt} · SPD: ${c.spd}</div>
-        </div>
-      `)
-      .on('click', () => onSelect(c.id));
-
-    markers[c.id] = m;
-  });
-}
-
-// ════════════════════════════════════════════════════════
-//  RENDER SIDEBAR LIST
-// ════════════════════════════════════════════════════════
-function renderList() {
-  const q    = document.getElementById('search').value.toLowerCase();
-  const list = Object.values(contacts)
-    .filter(c => activeTab === 'ALL' || c.type === activeTab)
-    .filter(c => !q || c.callsign.toLowerCase().includes(q)
-                    || c.country.toLowerCase().includes(q)
-                    || c.type.toLowerCase().includes(q))
-    .sort((a,b) => a.callsign.localeCompare(b.callsign));
-
-  const el = document.getElementById('contact-list');
-  el.innerHTML = '';
-  document.getElementById('sb-count').textContent = `${list.length} CONTACTS`;
-
-  list.forEach(c => {
-    const row = document.createElement('div');
-    row.className = 'row' + (c.id === selectedId ? ' selected' : '');
-    row.id = 'row-' + c.id;
-    row.innerHTML = `
-      <span class="row-flag">${c.flag}</span>
-      <div class="row-info">
-        <div class="row-name">${c.callsign}</div>
-        <div class="row-meta">${c.country} · ${c.location || c.alt}</div>
-      </div>
-      <span class="badge ${TYPE_BADGE[c.type]}">${c.type}</span>
-    `;
-    row.onclick = () => {
-      onSelect(c.id);
-      map.setView([c.lat, c.lng], 6);
-      if (markers[c.id]) markers[c.id].openPopup();
-    };
-    el.appendChild(row);
-  });
-}
-
-// ════════════════════════════════════════════════════════
-//  DETAIL PANEL
-// ════════════════════════════════════════════════════════
-function showDetail(c) {
-  const col = TYPE_COLOR[c.type];
-  document.getElementById('detail').innerHTML = `
-    <h4 style="color:${col}">▌ ${TYPE_LABEL[c.type]}</h4>
-    <div class="dr"><span class="dk">CALLSIGN</span> <span class="dv" style="color:${col}">${c.callsign}</span></div>
-    <div class="dr"><span class="dk">COUNTRY</span>  <span class="dv">${c.flag} ${c.country}</span></div>
-    <div class="dr"><span class="dk">TYPE</span>     <span class="dv">${c.subtype}</span></div>
-    <div class="dr"><span class="dk">LOCATION</span> <span class="dv">${c.location || 'Locating...'}</span></div>
-    <div class="dr"><span class="dk">ALTITUDE</span> <span class="dv">${c.alt}</span></div>
-    <div class="dr"><span class="dk">SPEED</span>    <span class="dv">${c.spd}</span></div>
-    <div class="dr"><span class="dk">HEADING</span>  <span class="dv">${c.heading}</span></div>
-    <div class="dr"><span class="dk">SQUAWK</span>   <span class="dv">${c.squawk}</span></div>
-    <div class="dr"><span class="dk">REG</span>      <span class="dv">${c.reg}</span></div>
-    <div class="dr"><span class="dk">ICAO</span>     <span class="dv">${c.id.toUpperCase()}</span></div>
-    <div class="dr"><span class="dk">COORDS</span>   <span class="dv">${c.lat.toFixed(3)}°, ${c.lng.toFixed(3)}°</span></div>
-    <div style="margin-top:.4rem;color:var(--dim);font-size:.56rem">
-      ${c.id === trailId ? '◈ Trail ON — click again to hide' : 'Click marker again to show trail'}
-    </div>
-  `;
-}
-
-// ════════════════════════════════════════════════════════
-//  SELECTION
-// ════════════════════════════════════════════════════════
-function onSelect(id) {
-  selectedId = id;
-  trailId = (trailId === id) ? null : id;   // toggle trail
-  const c = contacts[id];
-  if (c) showDetail(c);
-  renderMarkers();
-  renderList();
-}
-
-// ════════════════════════════════════════════════════════
-//  UPDATE COUNTS
-// ════════════════════════════════════════════════════════
-function updateCounts() {
-  const vals = Object.values(contacts);
-  document.getElementById('n-air').textContent   = vals.filter(c=>c.type==='AIR').length;
-  document.getElementById('n-helo').textContent  = vals.filter(c=>c.type==='HELO').length;
-  document.getElementById('n-drone').textContent = vals.filter(c=>c.type==='DRONE').length;
-  document.getElementById('n-ship').textContent  = vals.filter(c=>c.type==='SHIP').length;
-  document.getElementById('n-total').textContent = vals.length;
-}
-
-// ════════════════════════════════════════════════════════
-//  FILTER TABS
-// ════════════════════════════════════════════════════════
-const TAB_CLASS = { ALL:'on-all', AIR:'on-air', HELO:'on-helo', DRONE:'on-drone', SHIP:'on-ship' };
-function setTab(type, btn) {
-  activeTab = type;
-  document.querySelectorAll('.tab').forEach(b => b.className = 'tab');
-  btn.classList.add(TAB_CLASS[type]);
-  renderMarkers();
-  renderList();
-}
-
-// ════════════════════════════════════════════════════════
-//  FETCH AIRCRAFT  (airplanes.live)
-// ════════════════════════════════════════════════════════
-async function fetchAircraft() {
-  const st = document.getElementById('status');
-  st.textContent = 'UPDATING...'; st.className = 'busy';
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
-    const res = await fetch('https://api.airplanes.live/v2/mil', {
-      signal: ctrl.signal,
-      headers: { Accept:'application/json' }
-    });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    const ac = (data.ac || []).filter(a => a.lat && a.lon && isMilitary(a));
-
-    // Remove old air contacts, keep ships
-    Object.keys(contacts).forEach(id => { if (contacts[id].type !== 'SHIP') delete contacts[id]; });
-
-    ac.forEach(a => {
-      const ci = countryInfo(a.cou || a.ownOp || '');
-      const vt = vehicleType(a);
-      const id = a.hex || Math.random().toString(36).slice(2);
-      contacts[id] = {
-        id, type: vt,
-        callsign:  (a.flight || a.r || id).trim(),
-        country:   ci.n, flag: ci.f,
-        subtype:   a.t || a.desc || TYPE_LABEL[vt],
-        lat: +a.lat, lng: +a.lon,
-        alt:     a.alt_baro ? `${(+a.alt_baro).toLocaleString()} ft` : 'N/A',
-        spd:     a.gs       ? `${Math.round(+a.gs)} kts`             : 'N/A',
-        heading: a.track    ? `${Math.round(+a.track)}°`             : 'N/A',
-        squawk:  a.squawk   || 'N/A',
-        reg:     a.r        || 'N/A',
-        location: null,
-      };
-    });
-
-    updateCounts();
-    renderMarkers();
-    renderList();
-
-    st.textContent = `UPDATED ${new Date().toLocaleTimeString()}`; st.className = 'ok';
-
-    // Geocode top 40 in background
-    const toGeo = Object.values(contacts).filter(c => c.type !== 'SHIP' && !c.location).slice(0,40);
-    toGeo.forEach((c,i) => setTimeout(async () => {
-      c.location = await geocode(c.lat, c.lng);
-      if (selectedId === c.id) showDetail(c);
-      const row = document.getElementById('row-' + c.id);
-      if (row) row.querySelector('.row-meta').textContent = `${c.country} · ${c.location}`;
-    }, i * 300));
-
+    return (d.ac || [])
+      .filter(a => a.lat != null && a.lon != null)
+      .map(a => ({
+        icao: a.hex,
+        callsign: (a.flight || a.r || a.hex).trim(),
+        type: (a.t || 'UNKN').toUpperCase(),
+        lat: a.lat, lon: a.lon,
+        alt: typeof a.alt_baro === 'number' ? a.alt_baro : null,
+        spd: Math.round(a.gs || 0),
+        hdg: a.track || 0,
+        vr: a.baro_rate || 0,
+        squawk: a.squawk || '—',
+        reg: a.r || '—',
+        country: hexToCountry(a.hex),
+        onGround: a.alt_baro === 'ground' || a.on_ground === true,
+        isNaval: false,
+      }));
   } catch(e) {
-    st.textContent = 'FEED ERROR — RETRY IN 30s'; st.className = 'err';
+    toast('MILITARY API: ' + e.message); return [];
   }
 }
 
-// ════════════════════════════════════════════════════════
-//  AIS SHIPS  (aisstream.io)
-// ════════════════════════════════════════════════════════
-function connectAIS() {
-  if (!AIS_KEY || AIS_KEY === 'YOUR_API_KEY_HERE') return;
-  let ws;
-  function connect() {
-    try {
-      ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          APIKey: AIS_KEY,
-          BoundingBoxes: [[[-90,-180],[90,180]]],
-          FilterMessageTypes: ['PositionReport','ShipStaticData'],
-          ShipTypes: [35] // 35 = Military
-        }));
-      };
-      ws.onmessage = e => {
-        try {
-          const d    = JSON.parse(e.data);
-          const meta = d.MetaData || {};
-          if (!meta.latitude || !meta.longitude) return;
-          const mmsi = String(meta.MMSI || Math.random());
-          const id   = 'ship-' + mmsi;
-          const ci   = countryInfo(meta.flag || '');
-          const msg  = d.Message || {};
-          const pr   = msg.PositionReport || {};
-          const sd   = msg.ShipStaticData || {};
-          contacts[id] = {
-            id, type: 'SHIP',
-            callsign:  (meta.ShipName || mmsi).trim(),
-            country:   ci.n, flag: ci.f,
-            subtype:   'Naval Vessel',
-            lat: +meta.latitude, lng: +meta.longitude,
-            alt:     'Surface',
-            spd:     pr.Sog  != null ? `${pr.Sog.toFixed(1)} kts` : 'N/A',
-            heading: pr.Cog  != null ? `${Math.round(pr.Cog)}°`   : 'N/A',
-            squawk:  'N/A',
-            reg:     mmsi,
-            location: null,
-          };
-          updateCounts();
-          renderMarkers();
-          renderList();
-        } catch(err) {}
-      };
-      ws.onclose = () => setTimeout(connect, 30000);
-      ws.onerror = () => ws.close();
-    } catch(err) {}
+async function fetchCivil() {
+  try {
+    const r = await fetch(CIV_API, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    return (d.states || [])
+      .filter(s => s[6] != null && s[5] != null)
+      .slice(0, 5000)
+      .map(s => ({
+        icao: s[0],
+        callsign: (s[1] || s[0]).trim(),
+        type: '—', lat: s[6], lon: s[5],
+        alt: s[7] ? Math.round(s[7] * 3.28084) : null,
+        spd: s[9] ? Math.round(s[9] * 1.944) : 0,
+        hdg: s[10] || 0,
+        vr: s[11] ? Math.round(s[11] * 196.85) : 0,
+        squawk: s[14] || '—',
+        reg: '—',
+        country: s[2] || 'Unknown',
+        onGround: s[8] || false,
+        isNaval: false,
+        isCivil: true,
+      }));
+  } catch(e) {
+    toast('CIVIL API: ' + e.message); return [];
   }
-  connect();
 }
 
-// ════════════════════════════════════════════════════════
-//  BOOT
-// ════════════════════════════════════════════════════════
-fetchAircraft();
-setInterval(fetchAircraft, 30000);
-connectAIS();
+// ==================== RENDER ====================
+function render(list) {
+  const live = new Set(list.map(a => a.icao));
+  let air = 0, gnd = 0;
+
+  // Remove gone markers
+  for (const [icao, m] of Object.entries(markers)) {
+    if (!live.has(icao)) { map.removeLayer(m); delete markers[icao]; }
+  }
+
+  for (const ac of list) {
+    if (!ac.lat || !ac.lon) continue;
+    if (ac.onGround) gnd++; else air++;
+
+    // Store history
+    if (!posHist[ac.icao]) posHist[ac.icao] = [];
+    const h = posHist[ac.icao];
+    const last = h[h.length - 1];
+    if (!last || last.lat !== ac.lat || last.lon !== ac.lon) {
+      h.push({ lat: ac.lat, lon: ac.lon });
+      if (h.length > MAX_HIST) h.shift();
+    }
+
+    const sel = ac.icao === selectedIcao;
+    const icon = mkIcon(ac, sel);
+
+    if (markers[ac.icao]) {
+      markers[ac.icao].setLatLng([ac.lat, ac.lon]);
+      markers[ac.icao].setIcon(icon);
+      markers[ac.icao]._ac = ac;
+    } else {
+      const m = L.marker([ac.lat, ac.lon], { icon });
+      m._ac = ac;
+      m.on('click', e => { L.DomEvent.stopPropagation(e); pickAircraft(ac); });
+      m.addTo(map);
+      markers[ac.icao] = m;
+    }
+  }
+
+  // Update counts
+  document.getElementById('ac-total').textContent = list.length;
+  document.getElementById('b-air').textContent = air;
+  document.getElementById('b-gnd').textContent = gnd;
+
+  // Refresh tracer if still selected
+  if (selectedIcao && markers[selectedIcao]) drawTracer(selectedIcao);
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('last-update').textContent =
+    `UPDATED ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} UTC`;
+}
+
+// ==================== SELECT ====================
+function pickAircraft(ac) {
+  if (selectedIcao && markers[selectedIcao]) {
+    markers[selectedIcao].setIcon(mkIcon(markers[selectedIcao]._ac, false));
+  }
+  selectedIcao = ac.icao;
+  if (markers[selectedIcao]) {
+    markers[selectedIcao].setIcon(mkIcon(ac, true));
+    markers[selectedIcao].setZIndexOffset(1000);
+  }
+  drawTracer(ac.icao);
+  updatePanel(ac);
+  document.getElementById('ac-panel').classList.add('open');
+  document.getElementById('ac-panel').className =
+    'open' + (currentTab === 'civil' ? ' civ' : '');
+}
+
+function closePanel() {
+  if (selectedIcao && markers[selectedIcao]) {
+    markers[selectedIcao].setIcon(mkIcon(markers[selectedIcao]._ac, false));
+    markers[selectedIcao].setZIndexOffset(0);
+  }
+  selectedIcao = null;
+  tracerGroup.clearLayers();
+  document.getElementById('ac-panel').classList.remove('open');
+}
+
+// ==================== TRACER ====================
+function drawTracer(icao) {
+  tracerGroup.clearLayers();
+  const h = posHist[icao];
+  if (!h || h.length < 2) return;
+
+  const color = currentTab === 'military' ? '#00ff88' : '#22aaff';
+  const pts = h.map(p => [p.lat, p.lon]);
+
+  // Draw gradient trail as segments with decreasing opacity
+  for (let i = 1; i < pts.length; i++) {
+    const opacity = 0.2 + (i / pts.length) * 0.7;
+    L.polyline([pts[i-1], pts[i]], {
+      color, weight: 1.5 + (i / pts.length) * 1,
+      opacity, smoothFactor: 1
+    }).addTo(tracerGroup);
+  }
+
+  // Origin dot
+  L.circleMarker(pts[0], {
+    radius: 3, fillColor: color, fillOpacity: 0.5,
+    color: color, weight: 1
+  }).addTo(tracerGroup);
+
+  // Current position ring
+  L.circleMarker(pts[pts.length-1], {
+    radius: 8, fillColor: 'transparent',
+    color: color, weight: 1, opacity: 0.4
+  }).addTo(tracerGroup);
+}
+
+// ==================== PANEL ====================
+function updatePanel(ac) {
+  document.getElementById('p-cs').textContent  = ac.callsign || ac.icao;
+  document.getElementById('p-at').textContent  = ac.isNaval ? 'NAVAL AIRCRAFT' : (ac.type || '—');
+  document.getElementById('p-icao').textContent = ac.icao.toUpperCase();
+  document.getElementById('p-alt').textContent  = ac.onGround ? 'ON GROUND' :
+    (ac.alt != null ? ac.alt.toLocaleString() + ' ft' : '—');
+  document.getElementById('p-spd').textContent  = ac.spd ? ac.spd + ' kts' : '—';
+  document.getElementById('p-hdg').textContent  = ac.hdg != null ? ac.hdg + '°' : '—';
+  document.getElementById('p-vr').textContent   = ac.vr ? (ac.vr > 0 ? '▲ ' : '▼ ') + Math.abs(ac.vr) + ' fpm' : '—';
+  document.getElementById('p-sq').textContent   = ac.squawk || '—';
+  document.getElementById('p-reg').textContent  = ac.reg || '—';
+  document.getElementById('p-pos').textContent  =
+    `${ac.lat?.toFixed(4)}°N  ${ac.lon?.toFixed(4)}°E`;
+  document.getElementById('p-ctry').textContent = '🌐 ' + (ac.country || 'Unknown');
+}
+
+// ==================== TAB SWITCH ====================
+function switchTab(tab) {
+  currentTab = tab;
+
+  document.getElementById('tab-mil').className = 'tab-btn mil' + (tab==='military' ? ' active' : '');
+  document.getElementById('tab-civ').className = 'tab-btn civ' + (tab==='civil'    ? ' active' : '');
+  document.getElementById('b-mode').textContent = tab === 'military' ? 'MILITARY' : 'CIVIL AVIATION';
+  document.getElementById('legend').style.display = tab === 'military' ? 'block' : 'none';
+
+  const dot = document.getElementById('live-dot');
+  const tot = document.getElementById('ac-total');
+  dot.className = 'live-dot' + (tab === 'civil' ? ' civ' : '');
+  tot.className = 'hstat-val' + (tab === 'civil' ? ' civ' : '');
+
+  closePanel();
+  for (const [, m] of Object.entries(markers)) map.removeLayer(m);
+  markers = {};
+  posHist = {};
+  tracerGroup.clearLayers();
+
+  clearTimeout(refreshTimer);
+  clearInterval(countdownTimer);
+  startFetch();
+}
+
+// ==================== REFRESH LOOP ====================
+function startCountdown() {
+  countdownVal = REFRESH_SEC;
+  document.getElementById('b-timer').textContent = countdownVal;
+  document.getElementById('refresh-fill').style.width = '100%';
+
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdownVal--;
+    document.getElementById('b-timer').textContent = Math.max(0, countdownVal);
+    const pct = (countdownVal / REFRESH_SEC * 100).toFixed(1) + '%';
+    document.getElementById('refresh-fill').style.width = pct;
+    if (countdownVal <= 0) clearInterval(countdownTimer);
+  }, 1000);
+}
+
+async function startFetch() {
+  document.getElementById('status-txt').textContent = 'SCANNING';
+  startCountdown();
+
+  const list = currentTab === 'military' ? await fetchMilitary() : await fetchCivil();
+
+  if (list.length > 0) {
+    document.getElementById('status-txt').textContent = 'LIVE';
+    render(list);
+  } else {
+    document.getElementById('status-txt').textContent = 'OFFLINE';
+  }
+
+  refreshTimer = setTimeout(startFetch, REFRESH_SEC * 1000);
+}
+
+// ==================== TOAST ====================
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+// ==================== HEX → COUNTRY ====================
+function hexToCountry(hex) {
+  if (!hex) return 'Unknown';
+  const h = hex.toUpperCase();
+  if (/^A[0-9A-F]/.test(h))         return 'United States';
+  if (/^43/.test(h))                 return 'United Kingdom';
+  if (/^3[C-F]/.test(h))            return 'Germany';
+  if (/^3[4-7]/.test(h))            return 'France';
+  if (/^3[0-3]/.test(h))            return 'Spain';
+  if (/^4[0-3]/.test(h))            return 'Netherlands';
+  if (/^5[0-3]/.test(h))            return 'Italy';
+  if (/^3[89A-B]/.test(h))          return 'Russia';
+  if (/^7[89]/.test(h))             return 'China';
+  if (/^7[C-F]/.test(h))            return 'Australia';
+  if (/^[C][0-4A-F]/.test(h))       return 'Canada';
+  if (/^7[0-1]/.test(h))            return 'Japan';
+  if (/^71/.test(h))                 return 'South Korea';
+  if (/^6C/.test(h))                 return 'Israel';
+  if (/^60/.test(h))                 return 'Saudi Arabia';
+  if (/^80/.test(h))                 return 'Turkey';
+  if (/^4C/.test(h))                 return 'Norway';
+  if (/^4A/.test(h))                 return 'Denmark';
+  if (/^4[8-9]/.test(h))            return 'Sweden';
+  if (/^D0/.test(h))                 return 'Brazil';
+  if (/^E0/.test(h))                 return 'Argentina';
+  if (/^[Ee][8-9A-F]/.test(h))      return 'New Zealand';
+  if (/^89/.test(h))                 return 'Pakistan';
+  if (/^8A/.test(h))                 return 'India';
+  if (/^8[B-C]/.test(h))            return 'South Korea';
+  return 'Unknown';
+}
+
+// ==================== BOOT ====================
+window.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  startFetch().then(() => {
+    setTimeout(() => {
+      document.getElementById('loading').classList.add('fade');
+      setTimeout(() => document.getElementById('loading').remove(), 700);
+    }, 1200);
+  });
+});
 </script>
 </body>
 </html>
