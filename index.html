@@ -7,322 +7,129 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#070a0d;--surface:#0c1118;--surface2:#111820;--border:#1c2535;
+      --mil:#00ff88;--civ:#22aaff;--text:#b8c8d8;--text-dim:#4a5f78;
+      --header-h:58px;--bar-h:30px;
+    }
+    html,body{height:100%;overflow:hidden;background:var(--bg)}
+    body{font-family:'Share Tech Mono',monospace;color:var(--text)}
 
-    :root {
-      --bg: #070a0d;
-      --surface: #0c1118;
-      --surface2: #111820;
-      --border: #1c2535;
-      --mil: #00ff88;
-      --mil-dim: rgba(0,255,136,0.5);
-      --civ: #22aaff;
-      --civ-dim: rgba(34,170,255,0.5);
-      --text: #b8c8d8;
-      --text-dim: #4a5f78;
-      --warn: #ff9900;
-      --danger: #ff3344;
-      --header-h: 58px;
-      --bar-h: 30px;
-    }
+    #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+    #loading.fade{opacity:0;pointer-events:none}
+    .radar-ring{position:relative;width:80px;height:80px;margin-bottom:20px}
+    .radar-ring::before,.radar-ring::after{content:'';position:absolute;border-radius:50%;border:1px solid rgba(0,255,136,.15)}
+    .radar-ring::before{inset:0}.radar-ring::after{inset:14px;border-color:rgba(0,255,136,.25)}
+    .radar-center{position:absolute;inset:28px;background:radial-gradient(circle,rgba(0,255,136,.4),transparent 70%);border-radius:50%}
+    .radar-sweep{position:absolute;top:50%;left:50%;width:40px;height:1px;background:linear-gradient(to right,transparent,var(--mil));transform-origin:left center;animation:sweep 1.8s linear infinite;box-shadow:0 0 8px var(--mil)}
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .load-text{font-size:12px;letter-spacing:4px;color:var(--mil);animation:blink 1.2s ease-in-out infinite}
+    .load-sub{font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-top:6px}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-    html, body { height: 100%; overflow: hidden; background: var(--bg); }
+    header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:rgba(7,10,13,.97);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 14px;z-index:1000;backdrop-filter:blur(12px)}
+    .logo{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;letter-spacing:3px;color:var(--mil);white-space:nowrap;text-shadow:0 0 18px rgba(0,255,136,.3);display:flex;align-items:center;gap:7px}
+    .logo-icon{width:26px;height:26px;border:1px solid var(--mil);display:flex;align-items:center;justify-content:center;font-size:11px;position:relative}
+    .logo-icon::before{content:'';position:absolute;inset:3px;border:1px solid rgba(0,255,136,.3);border-radius:50%;animation:spin 8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .logo span{color:var(--text-dim)}
+    .tab-group{display:flex;gap:2px;background:var(--surface2);padding:4px;border-radius:6px;border:1px solid var(--border)}
+    .tab-btn{padding:6px 18px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-dim);transition:all .2s;white-space:nowrap}
+    .tab-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+    .tab-btn.active.mil{background:var(--mil);color:#000}
+    .tab-btn.active.civ{background:var(--civ);color:#000}
+    .header-stats{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:11px;color:var(--text-dim)}
+    .hstat{display:flex;align-items:center;gap:6px}
+    .hstat-val{font-size:20px;font-weight:bold;color:var(--mil);line-height:1}
+    .hstat-val.civ{color:var(--civ)}
+    .hstat-label{font-size:10px;letter-spacing:1px}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--mil);box-shadow:0 0 6px var(--mil);animation:pulse 2s infinite}
+    .live-dot.civ{background:var(--civ);box-shadow:0 0 6px var(--civ)}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 
-    body { font-family: 'Share Tech Mono', monospace; color: var(--text); }
+    #map{position:fixed;top:var(--header-h);left:0;right:0;bottom:var(--bar-h)}
+    #ac-canvas{position:absolute;inset:0;pointer-events:none;z-index:400}
 
-    /* ===== LOADING ===== */
-    #loading {
-      position: fixed; inset: 0; background: var(--bg);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 9999; transition: opacity 0.6s ease;
-    }
-    #loading.fade { opacity: 0; pointer-events: none; }
+    #ac-panel{position:fixed;top:calc(var(--header-h) + 10px);right:10px;width:270px;background:rgba(7,10,13,.97);border:1px solid var(--border);border-radius:8px;z-index:1001;backdrop-filter:blur(20px);transform:translateX(290px);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+    #ac-panel.open{transform:translateX(0)}
+    .panel-head{padding:13px 15px 11px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;position:relative}
+    .panel-head::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--mil);transition:background .3s}
+    #ac-panel.civ .panel-head::before{background:var(--civ)}
+    .panel-callsign{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--mil);letter-spacing:2px;line-height:1}
+    #ac-panel.civ .panel-callsign{color:var(--civ)}
+    .panel-actype{font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:3px}
+    .panel-close{background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:2px 4px}
+    .panel-close:hover{color:var(--text)}
+    .panel-body{padding:10px 15px}
+    .prow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px}
+    .prow:last-child{border-bottom:none}
+    .plabel{color:var(--text-dim);font-size:10px;letter-spacing:1px}
+    .pval{color:var(--text);font-size:12px}
+    .pval.accent{color:var(--mil);font-size:14px;font-weight:bold}
+    #ac-panel.civ .pval.accent{color:var(--civ)}
+    .panel-country{margin-top:8px;padding:7px 11px;background:rgba(255,255,255,.03);border-radius:4px;font-size:11px;color:var(--text-dim);letter-spacing:1px}
 
-    .radar-ring {
-      position: relative; width: 90px; height: 90px; margin-bottom: 24px;
-    }
-    .radar-ring::before, .radar-ring::after {
-      content: ''; position: absolute; border-radius: 50%;
-      border: 1px solid rgba(0,255,136,0.15);
-    }
-    .radar-ring::before { inset: 0; }
-    .radar-ring::after { inset: 15px; border-color: rgba(0,255,136,0.25); }
-    .radar-center {
-      position: absolute; inset: 30px;
-      background: radial-gradient(circle, rgba(0,255,136,0.4), transparent 70%);
-      border-radius: 50%;
-    }
-    .radar-sweep {
-      position: absolute; top: 50%; left: 50%; width: 44px; height: 1px;
-      background: linear-gradient(to right, transparent, var(--mil));
-      transform-origin: left center;
-      animation: sweep 1.8s linear infinite;
-      box-shadow: 0 0 8px var(--mil);
-    }
-    @keyframes sweep { to { transform: rotate(360deg); } }
+    #legend{position:fixed;bottom:calc(var(--bar-h)+10px);left:10px;background:rgba(7,10,13,.92);border:1px solid var(--border);border-radius:6px;padding:10px 13px;z-index:1000;font-size:11px;min-width:140px}
+    .leg-title{font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:7px}
+    .leg-item{display:flex;align-items:center;gap:7px;margin-bottom:4px;color:var(--text-dim)}
+    .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
-    .load-text {
-      font-size: 12px; letter-spacing: 4px; color: var(--mil);
-      animation: blink 1.2s ease-in-out infinite;
-    }
-    .load-sub { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin-top: 6px; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    #bot-bar{position:fixed;bottom:0;left:0;right:0;height:var(--bar-h);background:rgba(7,10,13,.97);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:22px;z-index:1000;font-size:11px;color:var(--text-dim)}
+    .bstat strong{color:var(--text)}
+    .bstat span{margin-right:4px}
+    .refresh-area{margin-left:auto;display:flex;align-items:center;gap:8px}
+    #refresh-bar{width:80px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+    #refresh-fill{height:100%;background:var(--mil);width:100%;transition:width 1s linear}
 
-    /* ===== HEADER ===== */
-    header {
-      position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
-      background: rgba(7,10,13,0.97);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 16px; padding: 0 16px;
-      z-index: 1000; backdrop-filter: blur(12px);
-    }
+    #coords{position:fixed;bottom:calc(var(--bar-h)+10px);right:10px;background:rgba(7,10,13,.85);border:1px solid var(--border);padding:5px 10px;font-size:11px;border-radius:4px;z-index:1000;color:var(--text-dim);pointer-events:none;letter-spacing:1px}
+    #toast{position:fixed;top:calc(var(--header-h)+10px);left:50%;transform:translateX(-50%) translateY(-60px);background:rgba(255,51,68,.12);border:1px solid rgba(255,51,68,.3);color:#ff7788;padding:7px 16px;border-radius:4px;font-size:11px;letter-spacing:1px;z-index:2000;transition:transform .3s;pointer-events:none}
+    #toast.show{transform:translateX(-50%) translateY(0)}
 
-    .logo {
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 17px; font-weight: 700; letter-spacing: 3px;
-      color: var(--mil); white-space: nowrap;
-      text-shadow: 0 0 20px rgba(0,255,136,0.35);
-      display: flex; align-items: center; gap: 8px;
-    }
-    .logo-icon {
-      width: 28px; height: 28px; border: 1px solid var(--mil);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; color: var(--mil);
-      position: relative;
-    }
-    .logo-icon::before {
-      content: ''; position: absolute; inset: 3px;
-      border: 1px solid rgba(0,255,136,0.3); border-radius: 50%;
-      animation: spin 8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .logo span { color: var(--text-dim); }
-
-    .tab-group {
-      display: flex; gap: 2px;
-      background: var(--surface2); padding: 4px; border-radius: 6px;
-      border: 1px solid var(--border);
-    }
-    .tab-btn {
-      padding: 7px 20px;
-      font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600;
-      letter-spacing: 2px; border: none; border-radius: 4px; cursor: pointer;
-      background: transparent; color: var(--text-dim);
-      transition: all 0.2s; white-space: nowrap;
-    }
-    .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
-    .tab-btn.active.mil { background: var(--mil); color: #000; }
-    .tab-btn.active.civ { background: var(--civ); color: #000; }
-
-    .header-stats {
-      margin-left: auto; display: flex; align-items: center; gap: 20px;
-      font-size: 11px; color: var(--text-dim);
-    }
-    .hstat { display: flex; align-items: center; gap: 6px; }
-    .hstat-val { font-size: 20px; font-weight: bold; color: var(--mil); line-height: 1; }
-    .hstat-val.civ { color: var(--civ); }
-    .hstat-label { font-size: 10px; letter-spacing: 1px; }
-
-    .live-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--mil); box-shadow: 0 0 6px var(--mil);
-      animation: pulse 2s infinite;
-    }
-    .live-dot.civ { background: var(--civ); box-shadow: 0 0 6px var(--civ); }
-    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
-
-    /* ===== MAP ===== */
-    #map {
-      position: fixed;
-      top: var(--header-h); left: 0; right: 0;
-      bottom: var(--bar-h);
-    }
-
-    /* Subtle scanline */
-    #map::after {
-      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 400;
-      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px);
-    }
-
-    /* ===== AIRCRAFT PANEL ===== */
-    #ac-panel {
-      position: fixed;
-      top: calc(var(--header-h) + 10px); right: 10px;
-      width: 280px;
-      background: rgba(7,10,13,0.96); border: 1px solid var(--border);
-      border-radius: 8px; padding: 0;
-      z-index: 1001; backdrop-filter: blur(20px);
-      transform: translateX(300px); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-      overflow: hidden;
-    }
-    #ac-panel.open { transform: translateX(0); }
-
-    .panel-head {
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: flex-start;
-      position: relative;
-    }
-    .panel-head::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: var(--mil); transition: background 0.3s;
-    }
-    #ac-panel.civ .panel-head::before { background: var(--civ); }
-
-    .panel-callsign {
-      font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700;
-      color: var(--mil); letter-spacing: 2px; line-height: 1;
-    }
-    #ac-panel.civ .panel-callsign { color: var(--civ); }
-    .panel-actype {
-      font-size: 11px; color: var(--text-dim); letter-spacing: 2px;
-      margin-top: 3px;
-    }
-    .panel-close {
-      background: none; border: none; color: var(--text-dim); font-size: 16px;
-      cursor: pointer; line-height: 1; padding: 2px 4px; flex-shrink: 0;
-    }
-    .panel-close:hover { color: var(--text); }
-
-    .panel-body { padding: 12px 16px; }
-
-    .prow {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
-      font-size: 12px;
-    }
-    .prow:last-child { border-bottom: none; }
-    .plabel { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
-    .pval { color: var(--text); font-size: 12px; }
-    .pval.accent { color: var(--mil); font-size: 14px; font-weight: bold; }
-    #ac-panel.civ .pval.accent { color: var(--civ); }
-
-    .panel-country {
-      margin-top: 10px; padding: 8px 12px;
-      background: rgba(255,255,255,0.03); border-radius: 4px;
-      font-size: 11px; color: var(--text-dim); letter-spacing: 1px;
-      display: flex; align-items: center; gap: 6px;
-    }
-
-    /* ===== LEGEND ===== */
-    #legend {
-      position: fixed; bottom: calc(var(--bar-h) + 10px); left: 10px;
-      background: rgba(7,10,13,0.92); border: 1px solid var(--border);
-      border-radius: 6px; padding: 12px 14px;
-      z-index: 1000; font-size: 11px; min-width: 148px;
-    }
-    .leg-title { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 8px; }
-    .leg-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text-dim); }
-    .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-    /* ===== BOTTOM BAR ===== */
-    #bot-bar {
-      position: fixed; bottom: 0; left: 0; right: 0; height: var(--bar-h);
-      background: rgba(7,10,13,0.97); border-top: 1px solid var(--border);
-      display: flex; align-items: center; padding: 0 16px; gap: 24px;
-      z-index: 1000; font-size: 11px; color: var(--text-dim);
-    }
-    .bstat strong { color: var(--text); }
-    .bstat span { margin-right: 5px; }
-    .refresh-area { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-    #refresh-bar {
-      width: 80px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
-    }
-    #refresh-fill {
-      height: 100%; background: var(--mil); width: 100%;
-      transition: width 1s linear;
-    }
-    #ac-panel.civ ~ #bot-bar #refresh-fill { background: var(--civ); }
-
-    /* ===== TOAST ===== */
-    #toast {
-      position: fixed; top: calc(var(--header-h) + 10px); left: 50%;
-      transform: translateX(-50%) translateY(-60px);
-      background: rgba(255,51,68,0.12); border: 1px solid rgba(255,51,68,0.3);
-      color: #ff7788; padding: 7px 16px; border-radius: 4px;
-      font-size: 11px; letter-spacing: 1px; z-index: 2000;
-      transition: transform 0.3s;
-      pointer-events: none;
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-
-    /* ===== LEAFLET OVERRIDES ===== */
-    .leaflet-control-zoom {
-      border: 1px solid var(--border) !important;
-      margin-bottom: 40px !important;
-    }
-    .leaflet-control-zoom a {
-      background: var(--surface) !important; color: var(--text) !important;
-      border-bottom: 1px solid var(--border) !important; width: 28px !important; height: 28px !important;
-      line-height: 28px !important;
-    }
-    .leaflet-control-zoom a:hover { background: var(--border) !important; }
-    .leaflet-control-attribution {
-      background: rgba(7,10,13,0.8) !important; color: var(--text-dim) !important; font-size: 9px !important;
-    }
-    .leaflet-control-attribution a { color: var(--text-dim) !important; }
-    .aircraft-icon { cursor: pointer; }
-    .aircraft-icon:hover { filter: brightness(1.4); }
-
-    /* ===== COORD CROSSHAIR ===== */
-    #coords {
-      position: fixed; bottom: calc(var(--bar-h) + 10px); right: 10px;
-      background: rgba(7,10,13,0.85); border: 1px solid var(--border);
-      padding: 5px 10px; font-size: 11px; border-radius: 4px; z-index: 1000;
-      color: var(--text-dim); pointer-events: none; letter-spacing: 1px;
-    }
+    .leaflet-control-zoom{border:1px solid var(--border)!important}
+    .leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border-bottom:1px solid var(--border)!important;width:28px!important;height:28px!important;line-height:28px!important}
+    .leaflet-control-zoom a:hover{background:var(--border)!important}
+    .leaflet-control-attribution{background:rgba(7,10,13,.8)!important;color:var(--text-dim)!important;font-size:9px!important}
+    .leaflet-control-attribution a{color:var(--text-dim)!important}
   </style>
 </head>
 <body>
 
-<!-- LOADING -->
 <div id="loading">
-  <div class="radar-ring">
-    <div class="radar-center"></div>
-    <div class="radar-sweep"></div>
-  </div>
+  <div class="radar-ring"><div class="radar-center"></div><div class="radar-sweep"></div></div>
   <div class="load-text">ACQUIRING TARGETS</div>
   <div class="load-sub">INITIALIZING ADS-B FEED...</div>
 </div>
 
-<!-- HEADER -->
 <header>
-  <div class="logo">
-    <div class="logo-icon">⊕</div>
-    MILITARY<span>TRACKER</span>.NET
-  </div>
-
+  <div class="logo"><div class="logo-icon">⊕</div>MILITARY<span>TRACKER</span>.NET</div>
   <div class="tab-group">
     <button class="tab-btn active mil" id="tab-mil" onclick="switchTab('military')">✦ MILITARY</button>
     <button class="tab-btn civ" id="tab-civ" onclick="switchTab('civil')">✈ CIVIL AVIATION</button>
   </div>
-
   <div class="header-stats">
     <div class="hstat">
       <div class="live-dot" id="live-dot"></div>
-      <span id="status-txt" style="letter-spacing:1px;font-size:11px;">CONNECTING</span>
+      <span id="status-txt" style="letter-spacing:1px;font-size:11px">CONNECTING</span>
     </div>
     <div class="hstat">
       <div class="hstat-val" id="ac-total">0</div>
       <div><div class="hstat-label">TOTAL</div><div class="hstat-label">AIRCRAFT</div></div>
     </div>
-    <div class="hstat" style="padding-left:10px; border-left:1px solid var(--border);">
-      <div id="last-update" style="font-size:10px; letter-spacing:1px; color: var(--text-dim);">—</div>
+    <div class="hstat" style="padding-left:10px;border-left:1px solid var(--border)">
+      <div id="last-update" style="font-size:10px;letter-spacing:1px;color:var(--text-dim)">—</div>
     </div>
   </div>
 </header>
 
-<!-- MAP -->
-<div id="map"></div>
+<div id="map"><canvas id="ac-canvas"></canvas></div>
 
-<!-- AIRCRAFT PANEL -->
 <div id="ac-panel">
   <div class="panel-head">
     <div>
       <div class="panel-callsign" id="p-cs">———</div>
-      <div class="panel-actype" id="p-at">AIRCRAFT TYPE UNKNOWN</div>
+      <div class="panel-actype" id="p-at">UNKNOWN TYPE</div>
     </div>
     <button class="panel-close" onclick="closePanel()">✕</button>
   </div>
@@ -334,22 +141,20 @@
     <div class="prow"><span class="plabel">VERTICAL RATE</span><span class="pval" id="p-vr">—</span></div>
     <div class="prow"><span class="plabel">SQUAWK</span><span class="pval" id="p-sq">—</span></div>
     <div class="prow"><span class="plabel">REGISTRATION</span><span class="pval" id="p-reg">—</span></div>
-    <div class="prow"><span class="plabel">POSITION</span><span class="pval" id="p-pos" style="font-size:11px;">—</span></div>
+    <div class="prow"><span class="plabel">POSITION</span><span class="pval" id="p-pos" style="font-size:11px">—</span></div>
     <div class="panel-country" id="p-ctry">🌐 Unknown Country</div>
   </div>
 </div>
 
-<!-- LEGEND (Military only) -->
 <div id="legend">
   <div class="leg-title">ICON LEGEND</div>
   <div class="leg-item"><div class="leg-dot" style="background:#00ff88"></div>Fighter / Jet</div>
   <div class="leg-item"><div class="leg-dot" style="background:#ffcc00"></div>Transport / Tanker</div>
-  <div class="leg-item"><div class="leg-dot" style="background:#ff6600"></div>Helicopter / Rotary</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ff6600"></div>Helicopter</div>
   <div class="leg-item"><div class="leg-dot" style="background:#ff44aa"></div>UAV / Drone</div>
   <div class="leg-item"><div class="leg-dot" style="background:#44bbff"></div>Maritime Patrol</div>
 </div>
 
-<!-- BOTTOM BAR -->
 <div id="bot-bar">
   <div class="bstat"><span>MODE</span><strong id="b-mode">MILITARY</strong></div>
   <div class="bstat"><span>AIRBORNE</span><strong id="b-air">0</strong></div>
@@ -360,279 +165,239 @@
   </div>
 </div>
 
-<!-- COORDS DISPLAY -->
 <div id="coords">LAT — LON —</div>
-
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-// ==================== CONFIG ====================
-const REFRESH_SEC = 30;
-const MAX_HIST = 40;
-const MIL_API  = 'https://api.adsb.lol/v2/mil';
-const CIV_API  = 'https://opensky-network.org/api/states/all';
+// ── CONFIG ──────────────────────────────────────────────────────────
+const REFRESH_MS = 30000;
+const MAX_HIST   = 25;      // tracer history points
+const CIV_LIMIT  = 3000;   // cap civil aircraft
+const HIT_PX     = 14;     // click hit radius in pixels
 
-// ==================== STATE ====================
-let map, tracerGroup;
-let markers = {};
-let posHist = {};        // icao -> [{lat, lon}]
+const MIL_API = 'https://api.adsb.lol/v2/mil';
+const CIV_API = 'https://opensky-network.org/api/states/all';
+
+// ── STATE ────────────────────────────────────────────────────────────
+let map, canvas, ctx;
+let acData      = [];
+let posHist     = {};
 let selectedIcao = null;
-let currentTab = 'military';
-let refreshTimer, countdownTimer, countdownVal = REFRESH_SEC;
+let currentTab  = 'military';
+let refreshTimeout, countdownInterval, countdownSec = 30;
+let rafId       = null;
 
-// ==================== MAP INIT ====================
+const TYPE_COLORS = {
+  fighter:    '#00ff88',
+  transport:  '#ffcc00',
+  helicopter: '#ff6600',
+  uav:        '#ff44aa',
+  maritime:   '#44bbff',
+  civil:      '#22aaff',
+};
+
+// ── MAP SETUP ────────────────────────────────────────────────────────
 function initMap() {
   map = L.map('map', {
     center: [25, 10], zoom: 3,
     minZoom: 2, maxZoom: 15,
     zoomControl: true,
-    attributionControl: true
   });
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
-    subdomains: 'abcd', maxZoom: 19
+    attribution: '© OpenStreetMap © CARTO',
+    subdomains: 'abcd', maxZoom: 19,
+    updateWhenIdle: false,
+    keepBuffer: 2,
   }).addTo(map);
 
-  tracerGroup = L.layerGroup().addTo(map);
+  canvas = document.getElementById('ac-canvas');
+  syncCanvasSize();
 
-  map.on('click', () => { if (selectedIcao) closePanel(); });
-
-  map.on('mousemove', e => {
-    const {lat, lng} = e.latlng;
-    document.getElementById('coords').textContent =
-      `LAT ${lat.toFixed(3)}°  LON ${lng.toFixed(3)}°`;
-  });
+  map.on('move zoom',     scheduleRedraw);
+  map.on('moveend zoomend', () => { syncCanvasSize(); scheduleRedraw(); });
+  map.on('click',         onMapClick);
+  map.on('mousemove',     onMouseMove);
+  window.addEventListener('resize', () => { syncCanvasSize(); scheduleRedraw(); });
 }
 
-// ==================== ICON FACTORY ====================
-const COLORS = {
-  fighter:   '#00ff88',
-  transport: '#ffcc00',
-  helicopter:'#ff6600',
-  uav:       '#ff44aa',
-  maritime:  '#44bbff',
-  civil:     '#22aaff',
-};
+function syncCanvasSize() {
+  const el = document.getElementById('map');
+  canvas.width  = el.clientWidth;
+  canvas.height = el.clientHeight;
+  ctx = canvas.getContext('2d');
+}
 
-function detectType(ac) {
-  const t = ((ac.type || ac.t) || '').toUpperCase();
-  const cs = ((ac.callsign || ac.flight) || '').toUpperCase().trim();
-  if (/H60|H47|UH-|AH-|CH-|B06|EC\d|HH-|MH-|SH-/.test(t) || cs.includes('HELO')) return 'helicopter';
-  if (/RQ-|MQ-|UAV|DRONE|GLOBAL HAWK/i.test(t) || cs.includes('UAV')) return 'uav';
-  if (/C17|C-17|C130|C-130|C5 |KC-|KC135|KC10|A400|C141|C5M|E767|B52/.test(t) ||
-      /^(RCH|REACH|ATLAS|EVAC|SPAR|SAM\d|AIR MOBILITY)/.test(cs)) return 'transport';
-  if (/P8|P-8|E2 |E-2|P3|P-3|CP-140|ATLANTIC/.test(t)) return 'maritime';
+// ── DRAW ──────────────────────────────────────────────────────────────
+function scheduleRedraw() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(drawFrame);
+}
+
+function drawFrame() {
+  rafId = null;
+  if (!ctx || !map) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const bounds = map.getBounds();
+  // Expand bounds slightly so icons near edges aren't clipped
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const latPad = (ne.lat - sw.lat) * 0.05;
+  const lngPad = (ne.lng - sw.lng) * 0.05;
+
+  for (const ac of acData) {
+    if (ac.lat < sw.lat - latPad || ac.lat > ne.lat + latPad) continue;
+    if (ac.lon < sw.lng - lngPad || ac.lon > ne.lng + lngPad) continue;
+
+    const pt    = map.latLngToContainerPoint([ac.lat, ac.lon]);
+    const x = pt.x, y = pt.y;
+    const sel   = ac.icao === selectedIcao;
+    const type  = ac.isCivil ? 'civil' : getType(ac);
+    const color = sel ? '#ff4455' : TYPE_COLORS[type];
+
+    // --- tracer path (drawn before icon so icon sits on top) ---
+    if (sel) {
+      const hist = posHist[ac.icao];
+      if (hist && hist.length > 1) {
+        for (let i = 1; i < hist.length; i++) {
+          const pa = map.latLngToContainerPoint([hist[i-1].lat, hist[i-1].lon]);
+          const pb = map.latLngToContainerPoint([hist[i].lat,   hist[i].lon]);
+          const t  = i / (hist.length - 1);
+          ctx.beginPath();
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x, pb.y);
+          ctx.strokeStyle = color;
+          ctx.lineWidth   = 0.8 + t * 1.6;
+          ctx.globalAlpha = 0.12 + t * 0.72;
+          ctx.shadowBlur  = 0;
+          ctx.stroke();
+        }
+        // origin dot
+        const p0 = map.latLngToContainerPoint([hist[0].lat, hist[0].lon]);
+        ctx.beginPath();
+        ctx.arc(p0.x, p0.y, 2.5, 0, Math.PI*2);
+        ctx.fillStyle   = color;
+        ctx.globalAlpha = 0.4;
+        ctx.shadowBlur  = 0;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // selection ring
+    if (sel) {
+      ctx.beginPath();
+      ctx.arc(0, 0, 12, 0, Math.PI*2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1;
+      ctx.globalAlpha = 0.5;
+      ctx.setLineDash([3, 2]);
+      ctx.shadowBlur  = 0;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.globalAlpha = ac.onGround ? 0.45 : 1;
+    ctx.fillStyle   = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = sel ? 8 : 3;
+
+    const hdg = (ac.hdg || 0) * Math.PI / 180;
+    ctx.rotate(hdg);
+
+    drawIcon(type);
+
+    ctx.restore();
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur  = 0;
+}
+
+function drawIcon(type) {
+  if (type === 'helicopter') {
+    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillRect(-7, -0.8, 14, 1.6);
+    ctx.fillRect(-0.8, -6, 1.6, 12);
+  } else if (type === 'uav') {
+    ctx.beginPath();
+    ctx.moveTo(0, -5); ctx.lineTo(5, 0); ctx.lineTo(0, 5); ctx.lineTo(-5, 0);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // Plane silhouette
+    ctx.beginPath();
+    ctx.moveTo(0, -6); ctx.lineTo(-2, 0); ctx.lineTo(-5.5, 1.5);
+    ctx.lineTo(-2, 2.5); ctx.lineTo(-2.5, 5.5); ctx.lineTo(0, 4.5);
+    ctx.lineTo(2.5, 5.5); ctx.lineTo(2, 2.5); ctx.lineTo(5.5, 1.5);
+    ctx.lineTo(2, 0); ctx.closePath(); ctx.fill();
+  }
+}
+
+// ── TYPE DETECTION ────────────────────────────────────────────────────
+function getType(ac) {
+  const t  = (ac.type || '').toUpperCase();
+  const cs = (ac.callsign || '').toUpperCase();
+  if (/H60|H47|UH-|AH-|CH-|EC\d|HH-|MH-|SH-|B06/.test(t)) return 'helicopter';
+  if (/RQ-|MQ-|UAV|DRONE/.test(t) || cs.includes('UAV'))   return 'uav';
+  if (/C17|C130|C5 |KC-|KC135|KC10|A400|B52/.test(t) ||
+      /^(RCH|REACH|ATLAS|EVAC|SPAR)/.test(cs))              return 'transport';
+  if (/P8|P-8|E2 |E-2|P3|P-3/.test(t))                     return 'maritime';
   return 'fighter';
 }
 
-function mkIcon(ac, sel) {
-  const type = ac.isCivil ? 'civil' : detectType(ac);
-  const color = sel ? '#ff4455' : COLORS[type];
-  const hdg = (ac.heading || ac.track || 0);
-  const glow = `filter:drop-shadow(0 0 ${sel?6:3}px ${color})`;
+// ── CLICK HIT-TEST ────────────────────────────────────────────────────
+function onMapClick(e) {
+  const px  = map.latLngToContainerPoint(e.latlng);
+  const bounds = map.getBounds();
+  let best = null, bestD2 = HIT_PX * HIT_PX;
 
-  let shape;
-  if (type === 'helicopter') {
-    shape = `<circle cx="12" cy="12" r="3" fill="${color}"/>
-      <rect x="3" y="11.2" width="18" height="1.5" rx="1" fill="${color}" opacity="0.85"/>
-      <rect x="11.2" y="5" width="1.5" height="14" rx="1" fill="${color}" opacity="0.85"/>
-      <circle cx="12" cy="12" r="6" fill="none" stroke="${color}" stroke-width="0.8" opacity="0.35"/>`;
-  } else if (type === 'uav') {
-    shape = `<path d="M12 4 L20 12 L12 20 L4 12Z" fill="${color}" opacity="0.9"/>
-      <line x1="5" y1="5" x2="19" y2="19" stroke="${color}" stroke-width="0.8" opacity="0.5"/>
-      <line x1="19" y1="5" x2="5" y2="19" stroke="${color}" stroke-width="0.8" opacity="0.5"/>`;
-  } else {
-    shape = `<g transform="rotate(${hdg - 90} 12 12)">
-      <path d="M12 2 L10 9 L2 11.5 L10 13.5 L8 21 L12 19 L16 21 L14 13.5 L22 11.5 L14 9Z"
-        fill="${color}" opacity="0.92"/>
-    </g>`;
+  for (const ac of acData) {
+    if (!bounds.contains([ac.lat, ac.lon])) continue;
+    const p  = map.latLngToContainerPoint([ac.lat, ac.lon]);
+    const d2 = (p.x - px.x)**2 + (p.y - px.y)**2;
+    if (d2 < bestD2) { bestD2 = d2; best = ac; }
   }
 
-  const ring = sel ? `<circle cx="12" cy="12" r="11" fill="none" stroke="${color}" stroke-width="1" opacity="0.4" stroke-dasharray="3 2"/>` : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="${glow}">${shape}${ring}</svg>`;
-
-  return L.divIcon({ html: svg, className: 'aircraft-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
+  if (best) pickAircraft(best);
+  else      closePanel();
 }
 
-// ==================== FETCH ====================
-async function fetchMilitary() {
-  try {
-    const r = await fetch(MIL_API, { signal: AbortSignal.timeout(15000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-    return (d.ac || [])
-      .filter(a => a.lat != null && a.lon != null)
-      .map(a => ({
-        icao: a.hex,
-        callsign: (a.flight || a.r || a.hex).trim(),
-        type: (a.t || 'UNKN').toUpperCase(),
-        lat: a.lat, lon: a.lon,
-        alt: typeof a.alt_baro === 'number' ? a.alt_baro : null,
-        spd: Math.round(a.gs || 0),
-        hdg: a.track || 0,
-        vr: a.baro_rate || 0,
-        squawk: a.squawk || '—',
-        reg: a.r || '—',
-        country: hexToCountry(a.hex),
-        onGround: a.alt_baro === 'ground' || a.on_ground === true,
-        isNaval: false,
-      }));
-  } catch(e) {
-    toast('MILITARY API: ' + e.message); return [];
-  }
+function onMouseMove(e) {
+  const { lat, lng } = e.latlng;
+  document.getElementById('coords').textContent =
+    `LAT ${lat.toFixed(3)}°  LON ${lng.toFixed(3)}°`;
 }
 
-async function fetchCivil() {
-  try {
-    const r = await fetch(CIV_API, { signal: AbortSignal.timeout(20000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-    return (d.states || [])
-      .filter(s => s[6] != null && s[5] != null)
-      .slice(0, 5000)
-      .map(s => ({
-        icao: s[0],
-        callsign: (s[1] || s[0]).trim(),
-        type: '—', lat: s[6], lon: s[5],
-        alt: s[7] ? Math.round(s[7] * 3.28084) : null,
-        spd: s[9] ? Math.round(s[9] * 1.944) : 0,
-        hdg: s[10] || 0,
-        vr: s[11] ? Math.round(s[11] * 196.85) : 0,
-        squawk: s[14] || '—',
-        reg: '—',
-        country: s[2] || 'Unknown',
-        onGround: s[8] || false,
-        isNaval: false,
-        isCivil: true,
-      }));
-  } catch(e) {
-    toast('CIVIL API: ' + e.message); return [];
-  }
-}
-
-// ==================== RENDER ====================
-function render(list) {
-  const live = new Set(list.map(a => a.icao));
-  let air = 0, gnd = 0;
-
-  // Remove gone markers
-  for (const [icao, m] of Object.entries(markers)) {
-    if (!live.has(icao)) { map.removeLayer(m); delete markers[icao]; }
-  }
-
-  for (const ac of list) {
-    if (!ac.lat || !ac.lon) continue;
-    if (ac.onGround) gnd++; else air++;
-
-    // Store history
-    if (!posHist[ac.icao]) posHist[ac.icao] = [];
-    const h = posHist[ac.icao];
-    const last = h[h.length - 1];
-    if (!last || last.lat !== ac.lat || last.lon !== ac.lon) {
-      h.push({ lat: ac.lat, lon: ac.lon });
-      if (h.length > MAX_HIST) h.shift();
-    }
-
-    const sel = ac.icao === selectedIcao;
-    const icon = mkIcon(ac, sel);
-
-    if (markers[ac.icao]) {
-      markers[ac.icao].setLatLng([ac.lat, ac.lon]);
-      markers[ac.icao].setIcon(icon);
-      markers[ac.icao]._ac = ac;
-    } else {
-      const m = L.marker([ac.lat, ac.lon], { icon });
-      m._ac = ac;
-      m.on('click', e => { L.DomEvent.stopPropagation(e); pickAircraft(ac); });
-      m.addTo(map);
-      markers[ac.icao] = m;
-    }
-  }
-
-  // Update counts
-  document.getElementById('ac-total').textContent = list.length;
-  document.getElementById('b-air').textContent = air;
-  document.getElementById('b-gnd').textContent = gnd;
-
-  // Refresh tracer if still selected
-  if (selectedIcao && markers[selectedIcao]) drawTracer(selectedIcao);
-
-  // Timestamp
-  const now = new Date();
-  document.getElementById('last-update').textContent =
-    `UPDATED ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} UTC`;
-}
-
-// ==================== SELECT ====================
+// ── AIRCRAFT SELECTION ────────────────────────────────────────────────
 function pickAircraft(ac) {
-  if (selectedIcao && markers[selectedIcao]) {
-    markers[selectedIcao].setIcon(mkIcon(markers[selectedIcao]._ac, false));
-  }
   selectedIcao = ac.icao;
-  if (markers[selectedIcao]) {
-    markers[selectedIcao].setIcon(mkIcon(ac, true));
-    markers[selectedIcao].setZIndexOffset(1000);
-  }
-  drawTracer(ac.icao);
+  scheduleRedraw();
   updatePanel(ac);
-  document.getElementById('ac-panel').classList.add('open');
-  document.getElementById('ac-panel').className =
-    'open' + (currentTab === 'civil' ? ' civ' : '');
+  const panel = document.getElementById('ac-panel');
+  panel.className = 'open' + (ac.isCivil ? ' civ' : '');
 }
 
 function closePanel() {
-  if (selectedIcao && markers[selectedIcao]) {
-    markers[selectedIcao].setIcon(mkIcon(markers[selectedIcao]._ac, false));
-    markers[selectedIcao].setZIndexOffset(0);
-  }
+  if (!selectedIcao) return;
   selectedIcao = null;
-  tracerGroup.clearLayers();
   document.getElementById('ac-panel').classList.remove('open');
+  scheduleRedraw();
 }
 
-// ==================== TRACER ====================
-function drawTracer(icao) {
-  tracerGroup.clearLayers();
-  const h = posHist[icao];
-  if (!h || h.length < 2) return;
-
-  const color = currentTab === 'military' ? '#00ff88' : '#22aaff';
-  const pts = h.map(p => [p.lat, p.lon]);
-
-  // Draw gradient trail as segments with decreasing opacity
-  for (let i = 1; i < pts.length; i++) {
-    const opacity = 0.2 + (i / pts.length) * 0.7;
-    L.polyline([pts[i-1], pts[i]], {
-      color, weight: 1.5 + (i / pts.length) * 1,
-      opacity, smoothFactor: 1
-    }).addTo(tracerGroup);
-  }
-
-  // Origin dot
-  L.circleMarker(pts[0], {
-    radius: 3, fillColor: color, fillOpacity: 0.5,
-    color: color, weight: 1
-  }).addTo(tracerGroup);
-
-  // Current position ring
-  L.circleMarker(pts[pts.length-1], {
-    radius: 8, fillColor: 'transparent',
-    color: color, weight: 1, opacity: 0.4
-  }).addTo(tracerGroup);
-}
-
-// ==================== PANEL ====================
 function updatePanel(ac) {
-  document.getElementById('p-cs').textContent  = ac.callsign || ac.icao;
-  document.getElementById('p-at').textContent  = ac.isNaval ? 'NAVAL AIRCRAFT' : (ac.type || '—');
+  document.getElementById('p-cs').textContent   = ac.callsign || ac.icao;
+  document.getElementById('p-at').textContent   = ac.type || '—';
   document.getElementById('p-icao').textContent = ac.icao.toUpperCase();
-  document.getElementById('p-alt').textContent  = ac.onGround ? 'ON GROUND' :
-    (ac.alt != null ? ac.alt.toLocaleString() + ' ft' : '—');
+  document.getElementById('p-alt').textContent  = ac.onGround ? 'ON GROUND'
+    : (ac.alt != null ? ac.alt.toLocaleString() + ' ft' : '—');
   document.getElementById('p-spd').textContent  = ac.spd ? ac.spd + ' kts' : '—';
   document.getElementById('p-hdg').textContent  = ac.hdg != null ? ac.hdg + '°' : '—';
-  document.getElementById('p-vr').textContent   = ac.vr ? (ac.vr > 0 ? '▲ ' : '▼ ') + Math.abs(ac.vr) + ' fpm' : '—';
+  document.getElementById('p-vr').textContent   = ac.vr
+    ? (ac.vr > 0 ? '▲ ' : '▼ ') + Math.abs(ac.vr) + ' fpm' : '—';
   document.getElementById('p-sq').textContent   = ac.squawk || '—';
   document.getElementById('p-reg').textContent  = ac.reg || '—';
   document.getElementById('p-pos').textContent  =
@@ -640,64 +405,161 @@ function updatePanel(ac) {
   document.getElementById('p-ctry').textContent = '🌐 ' + (ac.country || 'Unknown');
 }
 
-// ==================== TAB SWITCH ====================
+// ── FETCH ─────────────────────────────────────────────────────────────
+async function fetchMilitary() {
+  try {
+    const r = await fetch(MIL_API, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    return (d.ac || []).filter(a => a.lat != null && a.lon != null).map(a => ({
+      icao:     a.hex,
+      callsign: (a.flight || a.r || a.hex).trim(),
+      type:     (a.t || 'UNKN').toUpperCase(),
+      lat:      a.lat, lon: a.lon,
+      alt:      typeof a.alt_baro === 'number' ? a.alt_baro : null,
+      spd:      Math.round(a.gs || 0),
+      hdg:      a.track || 0,
+      vr:       a.baro_rate || 0,
+      squawk:   a.squawk || '—',
+      reg:      a.r || '—',
+      country:  hexToCountry(a.hex),
+      onGround: a.alt_baro === 'ground' || a.on_ground === true,
+    }));
+  } catch(e) { toast('MILITARY API: ' + e.message); return []; }
+}
+
+async function fetchCivil() {
+  try {
+    const r = await fetch(CIV_API, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    return (d.states || [])
+      .filter(s => s[6] != null && s[5] != null)
+      .slice(0, CIV_LIMIT)
+      .map(s => ({
+        icao:     s[0],
+        callsign: (s[1] || s[0]).trim(),
+        type:     '—',
+        lat:      s[6], lon: s[5],
+        alt:      s[7] ? Math.round(s[7] * 3.28084) : null,
+        spd:      s[9] ? Math.round(s[9] * 1.944)   : 0,
+        hdg:      s[10] || 0,
+        vr:       s[11] ? Math.round(s[11] * 196.85) : 0,
+        squawk:   s[14] || '—',
+        reg:      '—',
+        country:  s[2] || 'Unknown',
+        onGround: s[8] || false,
+        isCivil:  true,
+      }));
+  } catch(e) { toast('CIVIL API: ' + e.message); return []; }
+}
+
+// ── DATA INGESTION ────────────────────────────────────────────────────
+function applyData(list) {
+  let air = 0, gnd = 0;
+  const newHist = {};
+
+  for (const ac of list) {
+    if (ac.onGround) gnd++; else air++;
+    const h    = posHist[ac.icao] || [];
+    const last = h[h.length - 1];
+    if (!last || last.lat !== ac.lat || last.lon !== ac.lon) {
+      h.push({ lat: ac.lat, lon: ac.lon });
+      if (h.length > MAX_HIST) h.shift();
+    }
+    newHist[ac.icao] = h;
+  }
+
+  posHist = newHist;
+  acData  = list;
+
+  document.getElementById('ac-total').textContent = list.length;
+  document.getElementById('b-air').textContent    = air;
+  document.getElementById('b-gnd').textContent    = gnd;
+
+  const n = new Date();
+  document.getElementById('last-update').textContent =
+    `UPD ${n.getUTCHours().toString().padStart(2,'0')}:${n.getUTCMinutes().toString().padStart(2,'0')} UTC`;
+
+  scheduleRedraw();
+}
+
+// ── TAB SWITCH ────────────────────────────────────────────────────────
 function switchTab(tab) {
   currentTab = tab;
-
-  document.getElementById('tab-mil').className = 'tab-btn mil' + (tab==='military' ? ' active' : '');
-  document.getElementById('tab-civ').className = 'tab-btn civ' + (tab==='civil'    ? ' active' : '');
-  document.getElementById('b-mode').textContent = tab === 'military' ? 'MILITARY' : 'CIVIL AVIATION';
-  document.getElementById('legend').style.display = tab === 'military' ? 'block' : 'none';
-
-  const dot = document.getElementById('live-dot');
-  const tot = document.getElementById('ac-total');
-  dot.className = 'live-dot' + (tab === 'civil' ? ' civ' : '');
-  tot.className = 'hstat-val' + (tab === 'civil' ? ' civ' : '');
+  document.getElementById('tab-mil').className = 'tab-btn mil' + (tab==='military' ? ' active':'');
+  document.getElementById('tab-civ').className = 'tab-btn civ' + (tab==='civil'    ? ' active':'');
+  document.getElementById('b-mode').textContent     = tab==='military' ? 'MILITARY' : 'CIVIL AVIATION';
+  document.getElementById('legend').style.display   = tab==='military' ? 'block' : 'none';
+  document.getElementById('live-dot').className      = 'live-dot' + (tab==='civil' ? ' civ':'');
+  document.getElementById('ac-total').className      = 'hstat-val' + (tab==='civil' ? ' civ':'');
+  document.getElementById('refresh-fill').style.background = tab==='civil' ? 'var(--civ)':'var(--mil)';
 
   closePanel();
-  for (const [, m] of Object.entries(markers)) map.removeLayer(m);
-  markers = {};
-  posHist = {};
-  tracerGroup.clearLayers();
-
-  clearTimeout(refreshTimer);
-  clearInterval(countdownTimer);
+  acData = []; posHist = {};
+  scheduleRedraw();
+  clearTimeout(refreshTimeout);
+  clearInterval(countdownInterval);
   startFetch();
 }
 
-// ==================== REFRESH LOOP ====================
-function startCountdown() {
-  countdownVal = REFRESH_SEC;
-  document.getElementById('b-timer').textContent = countdownVal;
-  document.getElementById('refresh-fill').style.width = '100%';
-
-  clearInterval(countdownTimer);
-  countdownTimer = setInterval(() => {
-    countdownVal--;
-    document.getElementById('b-timer').textContent = Math.max(0, countdownVal);
-    const pct = (countdownVal / REFRESH_SEC * 100).toFixed(1) + '%';
-    document.getElementById('refresh-fill').style.width = pct;
-    if (countdownVal <= 0) clearInterval(countdownTimer);
+// ── COUNTDOWN ─────────────────────────────────────────────────────────
+function startCountdown(sec) {
+  countdownSec = sec;
+  document.getElementById('b-timer').textContent         = sec;
+  document.getElementById('refresh-fill').style.width    = '100%';
+  document.getElementById('refresh-fill').style.transition = 'width 1s linear';
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    countdownSec--;
+    document.getElementById('b-timer').textContent     = Math.max(0, countdownSec);
+    document.getElementById('refresh-fill').style.width =
+      (countdownSec / sec * 100).toFixed(1) + '%';
+    if (countdownSec <= 0) clearInterval(countdownInterval);
   }, 1000);
 }
 
+// ── FETCH LOOP ────────────────────────────────────────────────────────
 async function startFetch() {
   document.getElementById('status-txt').textContent = 'SCANNING';
-  startCountdown();
+  startCountdown(REFRESH_MS / 1000);
 
   const list = currentTab === 'military' ? await fetchMilitary() : await fetchCivil();
+  document.getElementById('status-txt').textContent = list.length ? 'LIVE' : 'OFFLINE';
+  if (list.length) applyData(list);
 
-  if (list.length > 0) {
-    document.getElementById('status-txt').textContent = 'LIVE';
-    render(list);
-  } else {
-    document.getElementById('status-txt').textContent = 'OFFLINE';
-  }
-
-  refreshTimer = setTimeout(startFetch, REFRESH_SEC * 1000);
+  refreshTimeout = setTimeout(startFetch, REFRESH_MS);
 }
 
-// ==================== TOAST ====================
+// ── HELPERS ───────────────────────────────────────────────────────────
+function hexToCountry(hex) {
+  if (!hex) return 'Unknown';
+  const h = hex.toUpperCase();
+  if (/^A[0-9A-F]/.test(h))        return 'United States';
+  if (/^43/.test(h))                return 'United Kingdom';
+  if (/^3[C-F]/.test(h))           return 'Germany';
+  if (/^3[4-7]/.test(h))           return 'France';
+  if (/^3[0-3]/.test(h))           return 'Spain';
+  if (/^4[0-3]/.test(h))           return 'Netherlands';
+  if (/^5[0-3]/.test(h))           return 'Italy';
+  if (/^3[89A-B]/.test(h))         return 'Russia';
+  if (/^7[89]/.test(h))            return 'China';
+  if (/^7[C-F]/.test(h))           return 'Australia';
+  if (/^[Cc][0-4A-F]/.test(h))     return 'Canada';
+  if (/^7[0-1]/.test(h))           return 'Japan';
+  if (/^6C/.test(h))               return 'Israel';
+  if (/^60/.test(h))               return 'Saudi Arabia';
+  if (/^80/.test(h))               return 'Turkey';
+  if (/^4C/.test(h))               return 'Norway';
+  if (/^4A/.test(h))               return 'Denmark';
+  if (/^4[89]/.test(h))            return 'Sweden';
+  if (/^D0/.test(h))               return 'Brazil';
+  if (/^E0/.test(h))               return 'Argentina';
+  if (/^89/.test(h))               return 'Pakistan';
+  if (/^8A/.test(h))               return 'India';
+  return 'Unknown';
+}
+
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = '⚠ ' + msg;
@@ -705,46 +567,14 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 5000);
 }
 
-// ==================== HEX → COUNTRY ====================
-function hexToCountry(hex) {
-  if (!hex) return 'Unknown';
-  const h = hex.toUpperCase();
-  if (/^A[0-9A-F]/.test(h))         return 'United States';
-  if (/^43/.test(h))                 return 'United Kingdom';
-  if (/^3[C-F]/.test(h))            return 'Germany';
-  if (/^3[4-7]/.test(h))            return 'France';
-  if (/^3[0-3]/.test(h))            return 'Spain';
-  if (/^4[0-3]/.test(h))            return 'Netherlands';
-  if (/^5[0-3]/.test(h))            return 'Italy';
-  if (/^3[89A-B]/.test(h))          return 'Russia';
-  if (/^7[89]/.test(h))             return 'China';
-  if (/^7[C-F]/.test(h))            return 'Australia';
-  if (/^[C][0-4A-F]/.test(h))       return 'Canada';
-  if (/^7[0-1]/.test(h))            return 'Japan';
-  if (/^71/.test(h))                 return 'South Korea';
-  if (/^6C/.test(h))                 return 'Israel';
-  if (/^60/.test(h))                 return 'Saudi Arabia';
-  if (/^80/.test(h))                 return 'Turkey';
-  if (/^4C/.test(h))                 return 'Norway';
-  if (/^4A/.test(h))                 return 'Denmark';
-  if (/^4[8-9]/.test(h))            return 'Sweden';
-  if (/^D0/.test(h))                 return 'Brazil';
-  if (/^E0/.test(h))                 return 'Argentina';
-  if (/^[Ee][8-9A-F]/.test(h))      return 'New Zealand';
-  if (/^89/.test(h))                 return 'Pakistan';
-  if (/^8A/.test(h))                 return 'India';
-  if (/^8[B-C]/.test(h))            return 'South Korea';
-  return 'Unknown';
-}
-
-// ==================== BOOT ====================
+// ── BOOT ──────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   initMap();
   startFetch().then(() => {
     setTimeout(() => {
       document.getElementById('loading').classList.add('fade');
-      setTimeout(() => document.getElementById('loading').remove(), 700);
-    }, 1200);
+      setTimeout(() => document.getElementById('loading').remove(), 600);
+    }, 800);
   });
 });
 </script>
