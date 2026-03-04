@@ -423,14 +423,32 @@ const nativeNames = {
 function getCountryInfo(raw) {
   if (!raw) return { name: 'Unknown', flag: '🎖️' };
   const upper = raw.toUpperCase().trim();
+
+  // Try exact 3-letter ISO code match first
   if (countryData[upper]) return countryData[upper];
-  if (nativeNames[upper] && countryData[nativeNames[upper]]) return countryData[nativeNames[upper]];
+
+  // Try native name lookup
+  if (nativeNames[upper] && countryData[nativeNames[upper]]) 
+    return countryData[nativeNames[upper]];
+
+  // Try matching against full English names in countryData
   for (const [code, info] of Object.entries(countryData)) {
     if (upper === info.name.toUpperCase()) return info;
   }
-  for (const [native, code] of Object.entries(nativeNames)) {
-    if (upper.includes(native)) return countryData[code] || { name: raw, flag: '🎖️' };
+
+  // Try partial match against English names
+  for (const [code, info] of Object.entries(countryData)) {
+    if (upper.includes(info.name.toUpperCase()) || info.name.toUpperCase().includes(upper)) 
+      return info;
   }
+
+  // Try partial native name match
+  for (const [native, code] of Object.entries(nativeNames)) {
+    if (upper.includes(native.toUpperCase())) 
+      return countryData[code] || { name: raw, flag: '🎖️' };
+  }
+
+  // Last resort — return raw value with generic flag
   return { name: raw, flag: '🎖️' };
 }
 
@@ -619,20 +637,173 @@ function getDetailColor(type) {
 // ═══════════════════════════════════════════════════════
 // GEOCODE CACHE
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// ENGLISH PLACE NAME OVERRIDES
+// Catches non-English names that slip through geocoding
+// ═══════════════════════════════════════════════════════
+const placeOverrides = {
+  // Countries
+  'deutschland':'Germany','russland':'Russia','russiya':'Russia','россия':'Russia',
+  'росія':'Russia','中国':'China','zhongguo':'China','日本':'Japan','한국':'South Korea',
+  'españa':'Spain','espagne':'France','frankreich':'Germany','france':'France',
+  'italia':'Italy','nederland':'Netherlands','polska':'Poland','sverige':'Sweden',
+  'norge':'Norway','danmark':'Denmark','suomi':'Finland','österreich':'Austria',
+  'schweiz':'Switzerland','suisse':'Switzerland','belgique':'Belgium',
+  'magyarország':'Hungary','česká republika':'Czech Republic','slovensko':'Slovakia',
+  'hrvatska':'Croatia','srbija':'Serbia','românia':'Romania','българия':'Bulgaria',
+  'türkiye':'Turkey','україна':'Ukraine','беларусь':'Belarus',
+  // Oceans & Seas
+  'тихий океан':'Pacific Ocean','атлантический океан':'Atlantic Ocean',
+  'индийский океан':'Indian Ocean','северный ледовитый океан':'Arctic Ocean',
+  'средиземное море':'Mediterranean Sea','чёрное море':'Black Sea',
+  'каспийское море':'Caspian Sea','красное море':'Red Sea',
+  'mer méditerranée':'Mediterranean Sea','océan atlantique':'Atlantic Ocean',
+  'océan pacifique':'Pacific Ocean','océan indien':'Indian Ocean',
+  'mittelmeer':'Mediterranean Sea','atlantischer ozean':'Atlantic Ocean',
+  'stilles meer':'Pacific Ocean','南海':'South China Sea',
+  '东海':'East China Sea','黄海':'Yellow Sea','日本海':'Sea of Japan',
+  // Russian Cities
+  'москва':'Moscow','санкт-петербург':'Saint Petersburg','новосибирск':'Novosibirsk',
+  'екатеринбург':'Yekaterinburg','нижний новгород':'Nizhny Novgorod',
+  'казань':'Kazan','челябинск':'Chelyabinsk','омск':'Omsk','самара':'Samara',
+  'ростов-на-дону':'Rostov-on-Don','уфа':'Ufa','красноярск':'Krasnoyarsk',
+  'воронеж':'Voronezh','пермь':'Perm','волгоград':'Volgograd',
+  'краснодар':'Krasnodar','саратов':'Saratov','тюмень':'Tyumen',
+  'тольятти':'Togliatti','ижевск':'Izhevsk','барнаул':'Barnaul',
+  'хабаровск':'Khabarovsk','владивосток':'Vladivostok','иркутск':'Irkutsk',
+  'ярославль':'Yaroslavl','махачкала':'Makhachkala','томск':'Tomsk',
+  'оренбург':'Orenburg','новокузнецк':'Novokuznetsk','кемерово':'Kemerovo',
+  'рязань':'Ryazan','астрахань':'Astrakhan','набережные челны':'Naberezhnye Chelny',
+  'пенза':'Penza','липецк','Lipetsk','тула':'Tula','киров':'Kirov',
+  'чебоксары':'Cheboksary','калининград':'Kaliningrad','брянск':'Bryansk',
+  'курск':'Kursk','иваново':'Ivanovo','магнитогорск':'Magnitogorsk',
+  'улан-удэ':'Ulan-Ude','тверь':'Tver','ставрополь':'Stavropol',
+  'белгород':'Belgorod','владимир':'Vladimir','сочи':'Sochi',
+  'мурманск':'Murmansk','архангельск':'Arkhangelsk','симферополь':'Simferopol',
+  'севастополь':'Sevastopol','якутск':'Yakutsk','читa':'Chita',
+  // Chinese Cities
+  '北京':'Beijing','上海':'Shanghai','广州':'Guangzhou','深圳':'Shenzhen',
+  '成都':'Chengdu','重庆':'Chongqing','天津':'Tianjin','武汉':'Wuhan',
+  '西安':'Xi\'an','杭州':'Hangzhou','南京':'Nanjing','沈阳':'Shenyang',
+  '青岛':'Qingdao','大连':'Dalian','厦门':'Xiamen','济南':'Jinan',
+  '哈尔滨':'Harbin','长春':'Changchun','福州':'Fuzhou','昆明':'Kunming',
+  '乌鲁木齐':'Urumqi','兰州':'Lanzhou','贵阳':'Guiyang','南宁':'Nanning',
+  '海口':'Haikou','三亚':'Sanya','拉萨':'Lhasa','银川':'Yinchuan',
+  // Japanese Cities
+  '東京':'Tokyo','大阪':'Osaka','名古屋':'Nagoya','札幌':'Sapporo',
+  '福岡':'Fukuoka','仙台':'Sendai','広島':'Hiroshima','京都':'Kyoto',
+  '神戸':'Kobe','川崎':'Kawasaki','横浜':'Yokohama','さいたま':'Saitama',
+  // Korean Cities
+  '서울':'Seoul','부산':'Busan','인천':'Incheon','대구':'Daegu',
+  '대전':'Daejeon','광주':'Gwangju','수원':'Suwon','울산':'Ulsan',
+  // Arabic Cities
+  'الرياض':'Riyadh','جدة':'Jeddah','مكة المكرمة':'Mecca','المدينة المنورة':'Medina',
+  'الدمام':'Dammam','أبوظبي':'Abu Dhabi','دبي':'Dubai','الكويت':'Kuwait City',
+  'الدوحة':'Doha','المنامة':'Manama','مسقط':'Muscat','بغداد':'Baghdad',
+  'بيروت':'Beirut','دمشق':'Damascus','عمان':'Amman','القاهرة':'Cairo',
+  'الإسكندرية':'Alexandria','طرابلس':'Tripoli','تونس':'Tunis',
+  'الدار البيضاء':'Casablanca','الرباط':'Rabat','الجزائر':'Algiers',
+  // German Cities
+  'münchen':'Munich','köln':'Cologne','frankfurt am main':'Frankfurt',
+  'düsseldorf':'Dusseldorf','dortmund':'Dortmund','essen':'Essen',
+  'bremen':'Bremen','dresden':'Dresden','leipzig':'Leipzig',
+  'hannover':'Hannover','nürnberg':'Nuremberg','duisburg':'Duisburg',
+  'bochum':'Bochum','wuppertal':'Wuppertal','bielefeld':'Bielefeld',
+  'bonn':'Bonn','münster':'Munster','karlsruhe':'Karlsruhe',
+  'mannheim':'Mannheim','augsburg':'Augsburg','wiesbaden':'Wiesbaden',
+  // French Cities
+  'paris':'Paris','marseille':'Marseille','lyon':'Lyon','toulouse':'Toulouse',
+  'nice':'Nice','nantes':'Nantes','strasbourg':'Strasbourg','montpellier':'Montpellier',
+  'bordeaux':'Bordeaux','lille':'Lille','rennes':'Rennes','reims':'Reims',
+  'toulon':'Toulon','grenoble':'Grenoble','dijon':'Dijon','angers':'Angers',
+  // Spanish Cities
+  'madrid':'Madrid','barcelona':'Barcelona','valencia':'Valencia',
+  'sevilla':'Seville','zaragoza':'Zaragoza','málaga':'Malaga',
+  'murcia':'Murcia','palma':'Palma','las palmas':'Las Palmas',
+  'bilbao':'Bilbao','valladolid':'Valladolid','córdoba':'Cordoba',
+  // Italian Cities
+  'roma':'Rome','milano':'Milan','napoli':'Naples','torino':'Turin',
+  'palermo':'Palermo','genova':'Genoa','bologna':'Bologna','firenze':'Florence',
+  'bari':'Bari','catania':'Catania','venezia':'Venice','verona':'Verona',
+  // Ukrainian Cities
+  'київ':'Kyiv','харків':'Kharkiv','одеса':'Odessa','дніпро':'Dnipro',
+  'донецьк':'Donetsk','запоріжжя':'Zaporizhzhia','львів':'Lviv',
+  'кривий ріг':'Kryvyi Rih','миколаїв':'Mykolaiv','маріуполь':'Mariupol',
+  // Rivers
+  'волга':'Volga River','дон':'Don River','днепр':'Dnieper River',
+  'обь':'Ob River','енисей':'Yenisei River','лена':'Lena River',
+  '黄河':'Yellow River','长江':'Yangtze River','珠江':'Pearl River',
+  'сена':'Seine River','рейн':'Rhine River','дунай':'Danube River',
+  'темза':'Thames River','тибр':'Tiber River','эбро':'Ebro River',
+  // Regions & States
+  'московская область':'Moscow Oblast','ленинградская область':'Leningrad Oblast',
+  'краснодарский край':'Krasnodar Krai','приморский край':'Primorsky Krai',
+  '广东省':'Guangdong Province','北京市':'Beijing Municipality',
+  '上海市':'Shanghai Municipality','四川省':'Sichuan Province',
+  'île-de-france':'Ile-de-France','provence-alpes-côte d\'azur':'Provence',
+  'nordrhein-westfalen':'North Rhine-Westphalia','bayern':'Bavaria',
+  'baden-württemberg':'Baden-Württemberg','niedersachsen':'Lower Saxony',
+  'hessen':'Hesse','sachsen':'Saxony','thüringen':'Thuringia',
+  'brandenburgo':'Brandenburg','sachsen-anhalt':'Saxony-Anhalt',
+};
+
+function toEnglish(name) {
+  if (!name) return name;
+  const lower = name.toLowerCase().trim();
+  if (placeOverrides[lower]) return placeOverrides[lower];
+  // Check if any override key is contained in the name
+  for (const [foreign, english] of Object.entries(placeOverrides)) {
+    if (lower.includes(foreign)) return name.replace(new RegExp(foreign, 'gi'), english);
+  }
+  return name;
+}
+
 const geocodeCache = {};
 async function getCityState(lat, lng) {
   const key = `${Math.round(lat * 5) / 5},${Math.round(lng * 5) / 5}`;
   if (geocodeCache[key]) return geocodeCache[key];
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`, {
-      headers: { 'Accept-Language': 'en' }
+    // Force English with multiple parameters
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en&namedetails=1&extratags=1`;
+    const res = await fetch(url, {
+      headers: {
+        'Accept-Language': 'en-US,en;q=0.9',
+        'User-Agent': 'MilitaryTracker/1.0'
+      }
     });
     const data = await res.json();
     const addr = data.address || {};
-    const city = addr.city || addr.town || addr.village || addr.county || '';
-    const state = addr.state || addr.region || '';
-    const country = addr.country || '';
-    let result = city && state ? `${city}, ${state}` : city || state || country || 'Unknown';
+    const namedetails = data.namedetails || {};
+
+    // Always prefer English name from namedetails if available
+    const getEnglishName = (field) => {
+      if (!field) return '';
+      return namedetails[`name:en`] || toEnglish(field);
+    };
+
+    const city = toEnglish(
+      addr.city || addr.town || addr.village ||
+      addr.municipality || addr.county || ''
+    );
+    const state = toEnglish(addr.state || addr.region || addr.province || '');
+    const country = toEnglish(addr.country || '');
+
+    // Handle ocean/sea/water bodies
+    const water = toEnglish(
+      addr.sea || addr.ocean || addr.bay ||
+      addr.strait || addr.gulf || ''
+    );
+    if (water) {
+      geocodeCache[key] = water;
+      return water;
+    }
+
+    let result = '';
+    if (city && state) result = `${city}, ${state}`;
+    else if (city && country) result = `${city}, ${country}`;
+    else if (state && country) result = `${state}, ${country}`;
+    else result = city || state || country || 'International Waters';
+
     geocodeCache[key] = result;
     return result;
   } catch { return 'Unknown'; }
@@ -808,7 +979,8 @@ async function fetchAll() {
     // Map aircraft contacts
     const airContacts = aircraft.map(a => {
       const vtype = detectVehicleType(a);
-      const countryInfo = getCountryInfo(a.cou || a.ownOp || '');
+      const rawCountry = a.cou || a.ownOp || a.operator || a.country || '';
+      const countryInfo = getCountryInfo(rawCountry);
       return {
         icao: a.hex || Math.random().toString(36).substr(2,6),
         callsign: (a.flight || a.r || a.hex || 'UNKNOWN').trim(),
