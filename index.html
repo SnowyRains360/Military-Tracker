@@ -505,8 +505,38 @@ function getFlag(country) {
 }
 
 // ═══════════════════════════════════════════
-// MAP SETUP
+// REVERSE GEOCODING — CITY & STATE IN ENGLISH
 // ═══════════════════════════════════════════
+const geocodeCache = {};
+
+async function getCityState(lat, lng, icao) {
+  const key = `${Math.round(lat * 10) / 10},${Math.round(lng * 10) / 10}`;
+  if (geocodeCache[key]) return geocodeCache[key];
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'MilitaryTracker/1.0' }
+    });
+    const data = await res.json();
+    const addr = data.address || {};
+
+    const city = addr.city || addr.town || addr.village || addr.county || addr.municipality || '';
+    const state = addr.state || addr.region || addr.province || '';
+    const country = addr.country || '';
+
+    let result = '';
+    if (city && state) result = `${city}, ${state}`;
+    else if (city) result = `${city}, ${country}`;
+    else if (state) result = `${state}, ${country}`;
+    else result = country || 'Unknown';
+
+    geocodeCache[key] = result;
+    return result;
+  } catch {
+    return 'Unknown';
+  }
+}
 const map = L.map('map', {
   center: [30, 10],
   zoom: 3,
@@ -560,6 +590,7 @@ async function fetchMilitary() {
         type: a.t || a.desc || 'MILITARY',
         registration: a.r || 'N/A',
         flag: getCountryInfo(a.cou || a.ownOp || '').flag,
+        location: 'Locating...',
       }));
 
     // Update counts
@@ -570,6 +601,19 @@ async function fetchMilitary() {
 
     updateMarkers();
     updateSidebar();
+
+    // Geocode top 50 contacts for city/state (rate limit friendly)
+    const toGeocode = allContacts.slice(0, 50);
+    toGeocode.forEach((c, i) => {
+      setTimeout(async () => {
+        c.location = await getCityState(c.lat, c.lng, c.icao);
+        // Update detail panel if this contact is selected
+        if (selectedIcao === c.icao) showDetail(c);
+        // Update sidebar row meta
+        const meta = document.querySelector(`#contact-${c.icao} .contact-meta`);
+        if (meta) meta.textContent = `${c.country || 'UNKNOWN'} · ${c.location}`;
+      }, i * 300); // 300ms delay between each to respect rate limits
+    });
 
     status.textContent = `UPDATED ${new Date().toLocaleTimeString()}`;
     status.className = 'refresh-status ok';
@@ -680,6 +724,7 @@ function showDetail(c) {
     <h4>▌ CONTACT DETAILS</h4>
     <div class="detail-row"><span class="detail-key">CALLSIGN</span><span class="detail-val">${c.callsign}</span></div>
     <div class="detail-row"><span class="detail-key">COUNTRY</span><span class="detail-val">${c.flag} ${c.country || 'UNKNOWN'}</span></div>
+    <div class="detail-row"><span class="detail-key">LOCATION</span><span class="detail-val">${c.location || 'Locating...'}</span></div>
     <div class="detail-row"><span class="detail-key">TYPE</span><span class="detail-val">${c.type}</span></div>
     <div class="detail-row"><span class="detail-key">REG</span><span class="detail-val">${c.registration}</span></div>
     <div class="detail-row"><span class="detail-key">ALTITUDE</span><span class="detail-val">${c.altitude}</span></div>
