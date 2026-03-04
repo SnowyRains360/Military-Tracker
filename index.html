@@ -324,43 +324,184 @@
 
 <script>
 // ═══════════════════════════════════════════
-// COUNTRY FLAG LOOKUP
+// COUNTRY CODE → ENGLISH NAME + FLAG
 // ═══════════════════════════════════════════
-const countryFlags = {
-  'USA': '🇺🇸', 'UNITED STATES': '🇺🇸',
-  'RUS': '🇷🇺', 'RUSSIA': '🇷🇺',
-  'CHN': '🇨🇳', 'CHINA': '🇨🇳',
-  'GBR': '🇬🇧', 'UNITED KINGDOM': '🇬🇧',
-  'FRA': '🇫🇷', 'FRANCE': '🇫🇷',
-  'DEU': '🇩🇪', 'GERMANY': '🇩🇪',
-  'ITA': '🇮🇹', 'ITALY': '🇮🇹',
-  'JPN': '🇯🇵', 'JAPAN': '🇯🇵',
-  'KOR': '🇰🇷', 'SOUTH KOREA': '🇰🇷',
-  'AUS': '🇦🇺', 'AUSTRALIA': '🇦🇺',
-  'CAN': '🇨🇦', 'CANADA': '🇨🇦',
-  'ISR': '🇮🇱', 'ISRAEL': '🇮🇱',
-  'SAU': '🇸🇦', 'SAUDI ARABIA': '🇸🇦',
-  'TUR': '🇹🇷', 'TURKEY': '🇹🇷',
-  'IND': '🇮🇳', 'INDIA': '🇮🇳',
-  'PAK': '🇵🇰', 'PAKISTAN': '🇵🇰',
-  'IRN': '🇮🇷', 'IRAN': '🇮🇷',
-  'NLD': '🇳🇱', 'NETHERLANDS': '🇳🇱',
-  'NOR': '🇳🇴', 'NORWAY': '🇳🇴',
-  'POL': '🇵🇱', 'POLAND': '🇵🇱',
-  'SWE': '🇸🇪', 'SWEDEN': '🇸🇪',
-  'ESP': '🇪🇸', 'SPAIN': '🇪🇸',
-  'GRC': '🇬🇷', 'GREECE': '🇬🇷',
-  'BEL': '🇧🇪', 'BELGIUM': '🇧🇪',
-  'NATO': '🌐',
+const countryData = {
+  // North America
+  'USA': { name: 'United States', flag: '🇺🇸' },
+  'CAN': { name: 'Canada', flag: '🇨🇦' },
+  'MEX': { name: 'Mexico', flag: '🇲🇽' },
+
+  // Europe
+  'GBR': { name: 'United Kingdom', flag: '🇬🇧' },
+  'FRA': { name: 'France', flag: '🇫🇷' },
+  'DEU': { name: 'Germany', flag: '🇩🇪' },
+  'ITA': { name: 'Italy', flag: '🇮🇹' },
+  'ESP': { name: 'Spain', flag: '🇪🇸' },
+  'NLD': { name: 'Netherlands', flag: '🇳🇱' },
+  'BEL': { name: 'Belgium', flag: '🇧🇪' },
+  'POL': { name: 'Poland', flag: '🇵🇱' },
+  'NOR': { name: 'Norway', flag: '🇳🇴' },
+  'SWE': { name: 'Sweden', flag: '🇸🇪' },
+  'DNK': { name: 'Denmark', flag: '🇩🇰' },
+  'FIN': { name: 'Finland', flag: '🇫🇮' },
+  'GRC': { name: 'Greece', flag: '🇬🇷' },
+  'PRT': { name: 'Portugal', flag: '🇵🇹' },
+  'ROU': { name: 'Romania', flag: '🇷🇴' },
+  'HUN': { name: 'Hungary', flag: '🇭🇺' },
+  'CZE': { name: 'Czech Republic', flag: '🇨🇿' },
+  'SVK': { name: 'Slovakia', flag: '🇸🇰' },
+  'HRV': { name: 'Croatia', flag: '🇭🇷' },
+  'BGR': { name: 'Bulgaria', flag: '🇧🇬' },
+  'AUT': { name: 'Austria', flag: '🇦🇹' },
+  'CHE': { name: 'Switzerland', flag: '🇨🇭' },
+  'UKR': { name: 'Ukraine', flag: '🇺🇦' },
+  'LTU': { name: 'Lithuania', flag: '🇱🇹' },
+  'LVA': { name: 'Latvia', flag: '🇱🇻' },
+  'EST': { name: 'Estonia', flag: '🇪🇪' },
+  'ALB': { name: 'Albania', flag: '🇦🇱' },
+  'MKD': { name: 'North Macedonia', flag: '🇲🇰' },
+  'MNE': { name: 'Montenegro', flag: '🇲🇪' },
+  'SRB': { name: 'Serbia', flag: '🇷🇸' },
+  'SVN': { name: 'Slovenia', flag: '🇸🇮' },
+  'LUX': { name: 'Luxembourg', flag: '🇱🇺' },
+  'ISL': { name: 'Iceland', flag: '🇮🇸' },
+
+  // Russia & Central Asia
+  'RUS': { name: 'Russia', flag: '🇷🇺' },
+  'KAZ': { name: 'Kazakhstan', flag: '🇰🇿' },
+  'UZB': { name: 'Uzbekistan', flag: '🇺🇿' },
+  'AZE': { name: 'Azerbaijan', flag: '🇦🇿' },
+  'GEO': { name: 'Georgia', flag: '🇬🇪' },
+  'ARM': { name: 'Armenia', flag: '🇦🇲' },
+  'BLR': { name: 'Belarus', flag: '🇧🇾' },
+
+  // Middle East
+  'ISR': { name: 'Israel', flag: '🇮🇱' },
+  'SAU': { name: 'Saudi Arabia', flag: '🇸🇦' },
+  'ARE': { name: 'United Arab Emirates', flag: '🇦🇪' },
+  'TUR': { name: 'Turkey', flag: '🇹🇷' },
+  'IRN': { name: 'Iran', flag: '🇮🇷' },
+  'IRQ': { name: 'Iraq', flag: '🇮🇶' },
+  'JOR': { name: 'Jordan', flag: '🇯🇴' },
+  'KWT': { name: 'Kuwait', flag: '🇰🇼' },
+  'QAT': { name: 'Qatar', flag: '🇶🇦' },
+  'BHR': { name: 'Bahrain', flag: '🇧🇭' },
+  'OMN': { name: 'Oman', flag: '🇴🇲' },
+  'YEM': { name: 'Yemen', flag: '🇾🇪' },
+  'SYR': { name: 'Syria', flag: '🇸🇾' },
+  'LBN': { name: 'Lebanon', flag: '🇱🇧' },
+
+  // Asia
+  'CHN': { name: 'China', flag: '🇨🇳' },
+  'JPN': { name: 'Japan', flag: '🇯🇵' },
+  'KOR': { name: 'South Korea', flag: '🇰🇷' },
+  'PRK': { name: 'North Korea', flag: '🇰🇵' },
+  'IND': { name: 'India', flag: '🇮🇳' },
+  'PAK': { name: 'Pakistan', flag: '🇵🇰' },
+  'BGD': { name: 'Bangladesh', flag: '🇧🇩' },
+  'THA': { name: 'Thailand', flag: '🇹🇭' },
+  'VNM': { name: 'Vietnam', flag: '🇻🇳' },
+  'IDN': { name: 'Indonesia', flag: '🇮🇩' },
+  'MYS': { name: 'Malaysia', flag: '🇲🇾' },
+  'PHL': { name: 'Philippines', flag: '🇵🇭' },
+  'SGP': { name: 'Singapore', flag: '🇸🇬' },
+  'MMR': { name: 'Myanmar', flag: '🇲🇲' },
+  'AFG': { name: 'Afghanistan', flag: '🇦🇫' },
+  'TWN': { name: 'Taiwan', flag: '🇹🇼' },
+  'MNG': { name: 'Mongolia', flag: '🇲🇳' },
+
+  // Africa
+  'EGY': { name: 'Egypt', flag: '🇪🇬' },
+  'ZAF': { name: 'South Africa', flag: '🇿🇦' },
+  'NGA': { name: 'Nigeria', flag: '🇳🇬' },
+  'ETH': { name: 'Ethiopia', flag: '🇪🇹' },
+  'KEN': { name: 'Kenya', flag: '🇰🇪' },
+  'MAR': { name: 'Morocco', flag: '🇲🇦' },
+  'DZA': { name: 'Algeria', flag: '🇩🇿' },
+  'TUN': { name: 'Tunisia', flag: '🇹🇳' },
+  'LBY': { name: 'Libya', flag: '🇱🇾' },
+  'SDN': { name: 'Sudan', flag: '🇸🇩' },
+  'AGO': { name: 'Angola', flag: '🇦🇴' },
+  'GHA': { name: 'Ghana', flag: '🇬🇭' },
+  'TZA': { name: 'Tanzania', flag: '🇹🇿' },
+  'UGA': { name: 'Uganda', flag: '🇺🇬' },
+
+  // South America
+  'BRA': { name: 'Brazil', flag: '🇧🇷' },
+  'ARG': { name: 'Argentina', flag: '🇦🇷' },
+  'CHL': { name: 'Chile', flag: '🇨🇱' },
+  'COL': { name: 'Colombia', flag: '🇨🇴' },
+  'PER': { name: 'Peru', flag: '🇵🇪' },
+  'VEN': { name: 'Venezuela', flag: '🇻🇪' },
+  'ECU': { name: 'Ecuador', flag: '🇪🇨' },
+  'BOL': { name: 'Bolivia', flag: '🇧🇴' },
+
+  // Oceania
+  'AUS': { name: 'Australia', flag: '🇦🇺' },
+  'NZL': { name: 'New Zealand', flag: '🇳🇿' },
+
+  // Organizations
+  'NATO': { name: 'NATO', flag: '🌐' },
+  'UN': { name: 'United Nations', flag: '🇺🇳' },
 };
 
-function getFlag(country) {
-  if (!country) return '🎖️';
-  const upper = country.toUpperCase();
-  for (const [key, flag] of Object.entries(countryFlags)) {
-    if (upper.includes(key)) return flag;
+// Also handle full English names coming from the API
+const nameToData = {
+  'UNITED STATES': { name: 'United States', flag: '🇺🇸' },
+  'RUSSIA': { name: 'Russia', flag: '🇷🇺' },
+  'CHINA': { name: 'China', flag: '🇨🇳' },
+  'UNITED KINGDOM': { name: 'United Kingdom', flag: '🇬🇧' },
+  'FRANCE': { name: 'France', flag: '🇫🇷' },
+  'GERMANY': { name: 'Germany', flag: '🇩🇪' },
+  'AUSTRALIA': { name: 'Australia', flag: '🇦🇺' },
+  'CANADA': { name: 'Canada', flag: '🇨🇦' },
+  'JAPAN': { name: 'Japan', flag: '🇯🇵' },
+  'SOUTH KOREA': { name: 'South Korea', flag: '🇰🇷' },
+  'INDIA': { name: 'India', flag: '🇮🇳' },
+  'ISRAEL': { name: 'Israel', flag: '🇮🇱' },
+  'TURKEY': { name: 'Turkey', flag: '🇹🇷' },
+  'SAUDI ARABIA': { name: 'Saudi Arabia', flag: '🇸🇦' },
+  'NETHERLANDS': { name: 'Netherlands', flag: '🇳🇱' },
+  'NORWAY': { name: 'Norway', flag: '🇳🇴' },
+  'POLAND': { name: 'Poland', flag: '🇵🇱' },
+  'SWEDEN': { name: 'Sweden', flag: '🇸🇪' },
+  'SPAIN': { name: 'Spain', flag: '🇪🇸' },
+  'ITALY': { name: 'Italy', flag: '🇮🇹' },
+  'GREECE': { name: 'Greece', flag: '🇬🇷' },
+  'BELGIUM': { name: 'Belgium', flag: '🇧🇪' },
+  'PAKISTAN': { name: 'Pakistan', flag: '🇵🇰' },
+  'IRAN': { name: 'Iran', flag: '🇮🇷' },
+  'BRAZIL': { name: 'Brazil', flag: '🇧🇷' },
+  'UKRAINE': { name: 'Ukraine', flag: '🇺🇦' },
+};
+
+function getCountryInfo(raw) {
+  if (!raw) return { name: 'Unknown', flag: '🎖️' };
+  const upper = raw.toUpperCase().trim();
+
+  // Try exact 3-letter code match
+  if (countryData[upper]) return countryData[upper];
+
+  // Try full name match
+  if (nameToData[upper]) return nameToData[upper];
+
+  // Try partial match in countryData keys
+  for (const [code, info] of Object.entries(countryData)) {
+    if (upper.includes(code) || code.includes(upper)) return info;
   }
-  return '🎖️';
+
+  // Try partial match in nameToData
+  for (const [key, info] of Object.entries(nameToData)) {
+    if (upper.includes(key) || key.includes(upper)) return info;
+  }
+
+  // Return raw value with generic flag if no match
+  return { name: raw, flag: '🎖️' };
+}
+
+function getFlag(country) {
+  return getCountryInfo(country).flag;
 }
 
 // ═══════════════════════════════════════════
@@ -409,7 +550,7 @@ async function fetchMilitary() {
       .map(a => ({
         icao: a.hex || '',
         callsign: (a.flight || a.r || a.hex || 'UNKNOWN').trim(),
-        country: a.cou || a.ownOp || '',
+        country: getCountryInfo(a.cou || a.ownOp || '').name,
         lat: parseFloat(a.lat),
         lng: parseFloat(a.lon),
         altitude: a.alt_baro ? `${parseInt(a.alt_baro).toLocaleString()} ft` : 'N/A',
@@ -418,7 +559,7 @@ async function fetchMilitary() {
         squawk: a.squawk || 'N/A',
         type: a.t || a.desc || 'MILITARY',
         registration: a.r || 'N/A',
-        flag: getFlag(a.cou || a.ownOp || ''),
+        flag: getCountryInfo(a.cou || a.ownOp || '').flag,
       }));
 
     // Update counts
