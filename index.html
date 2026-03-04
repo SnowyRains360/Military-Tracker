@@ -459,7 +459,124 @@ function detectVehicleType(ac) {
   return 'AIR';
 }
 
-function getVehicleIcon(type) {
+// ═══════════════════════════════════════════════════════
+// STRICT MILITARY FILTER
+// ═══════════════════════════════════════════════════════
+
+// Known civilian operators to exclude
+const civilianOperators = [
+  'DELTA','UNITED','AMERICAN','SOUTHWEST','JETBLUE','SPIRIT','FRONTIER',
+  'ALASKA','HAWAIIAN','ALLEGIANT','SUN COUNTRY','BREEZE','AVELO',
+  'LUFTHANSA','BRITISH AIRWAYS','AIR FRANCE','KLM','RYANAIR','EASYJET',
+  'WIZZ','NORWEGIAN','VUELING','IBERIA','SWISS','AUSTRIAN','FINNAIR',
+  'SAS','TAP','TURKISH AIRLINES','EMIRATES','ETIHAD','QATAR AIRWAYS',
+  'SINGAPORE AIRLINES','CATHAY','JAPAN AIRLINES','ANA','KOREAN AIR',
+  'AIR CANADA','AIR NEW ZEALAND','QANTAS','VIRGIN','SUNWING','WESTJET',
+  'FEDEX','UPS','DHL','ATLAS AIR','AMAZON AIR','KALITTA','ABX',
+  'AEROMEXICO','AVIANCA','LATAM','GOL','AZUL','COPA','WINGO',
+  'INDIGO','AIR INDIA','VISTARA','SPICEJET','GOAIR',
+  'PRIVATE','BIZJET','EXECAIR','NETJETS','FLEXJET','WHEELS UP',
+  'CESSNA','PIPER','BEECH','CIRRUS','MOONEY','DIAMOND','SOCATA',
+];
+
+// Military callsign prefixes — these are almost always military
+const milCallsigns = [
+  'RCH','SAM','REACH','VENUS','EVAD','JAKE','ROCKY','BRONZE',
+  'STEEL','IRON','EAGLE','VIPER','KNIFE','MAKO','HOMER','COLT',
+  'GHOST','SHADOW','RAVEN','FALCON','HAWK','TALON','COBRA','RIDER',
+  'SWIFT','STORM','JOLLY','PEDRO','RESCUE','GUARD','SENTRY','RIVET',
+  'JSTAR','AWACS','SIGINT','RECON','ELINT','DRAGON','PYTHON','WOLF',
+  'BEAR','BISON','BADGER','FOXBAT','FLANKER','FENCER','BACKFIRE',
+  'BLACKJACK','CANDID','COSSACK','CONDOR','HALO','HIND','HIP',
+  'MAGIC','TOPGUN','HOSER','MAVERICK','ICEMAN','GOOSE','SLIDER',
+  'MIKE','CHARLIE','BRAVO','ALPHA','ZULU','LIMA','TANGO','FOXTROT',
+  'GLOBAL','HERKY','HERC','STARLIFTER','GALAXIE','STRATOTANKER',
+  'EXTENDER','SENTINEL','TRITON','REAPER','PREDATOR','AVENGER',
+  'DARKSTAR','SWITCHBLADE','GREMLIN','VALKYRIE','SPIRIT','LANCER',
+  'BONE','BUFF','WARTHOG','THUNDERBOLT','LIGHTNING','RAPTOR',
+  'HORNET','SUPER HORNET','GROWLER','HAWKEYE','PROWLER','INTRUDER',
+  'CORSAIR','TOMCAT','VIKING','ORION','POSEIDON','NEPTUNE',
+  'BLACKHAWK','SEAHAWK','KNIGHTHAWK','NIGHTHAWK','PAVE HAWK',
+  'CHINOOK','OSPREY','SUPER STALLION','SEA STALLION','JOLLY GREEN',
+  'APACHE','KIOWA','IROQUOIS','HUEY','COBRA','VENOM','VIPER',
+  'EUROCOPTER','TIGER','CAIMAN','CARACAL','COUGAR','PUMA',
+  'LYNX','WILDCAT','MERLIN','COMMANDO','CHINOOK','PUMA',
+];
+
+// Known military aircraft type codes
+const milAircraftTypes = [
+  'B52','B2','B1','F15','F16','F18','F22','F35','F117','A10','A400',
+  'C17','C130','C5','C141','C135','KC135','KC10','KC46','E3','E8',
+  'P8','P3','S3','EA18','EA6','EP3','RC135','RQ4','MQ9','MQ1',
+  'U2','SR71','TR1','RU21','RC12','U21','OV10','AC130','MC130',
+  'EC130','WC130','HC130','LC130','DC130','TC135','WC135','OC135',
+  'NKC135','EC135','VC25','VC137','E4','E6','E9','EO5','EQ4',
+  'SU27','SU30','SU33','SU34','SU35','SU57','MIG29','MIG31',
+  'TU95','TU160','TU22','TU134','IL76','IL78','AN124','AN225',
+  'J10','J11','J15','J16','J20','H6','Y8','Y9','Y20',
+  'F2','F4','T4','T2','US2','SH60','OH1','CH47','UH60',
+  'AW101','EH101','AW159','LYNX','SEA KING','NIMROD','TYPHOON',
+  'TORNADO','HARRIER','JAGUAR','BUCCANEER','VICTOR','VULCAN',
+  'RAFALE','MIRAGE','SUPER ETENDARD','ATLANTIC','ATLANTIQUE',
+  'TRANSALL','EPSILON','ALPHAJET','CAP10','FENNEC','COUGAR',
+  'NH90','TIGER','A330MRTT','MRTT','AWACS','JSTARS',
+  'GLOBEMASTER','HERCULES','TRISTAR','NIMROD','SENTINEL',
+  'SHADOW','WATCHKEEPER','REAPER','PROTECTOR','PREDATOR',
+];
+
+function isMilitary(ac) {
+  const callsign = (ac.flight || '').toUpperCase().trim();
+  const reg = (ac.r || '').toUpperCase().trim();
+  const type = (ac.t || '').toUpperCase().trim();
+  const desc = (ac.desc || '').toUpperCase().trim();
+  const operator = (ac.ownOp || '').toUpperCase().trim();
+  const country = (ac.cou || '').toUpperCase().trim();
+
+  // If already tagged as military by API — trust it but still check
+  const apiMil = ac.mil === true || ac.military === true;
+
+  // Reject known civilian operators immediately
+  for (const civ of civilianOperators) {
+    if (callsign.includes(civ) || operator.includes(civ)) return false;
+  }
+
+  // Reject pure numeric callsigns (almost always civilian GA)
+  if (/^\d+$/.test(callsign)) return false;
+
+  // Reject standard airline callsigns (3 letters + numbers like UAL123, DAL456)
+  if (/^[A-Z]{2,3}\d{1,4}[A-Z]?$/.test(callsign)) {
+    // But allow if API tagged as military
+    if (!apiMil) return false;
+  }
+
+  // Accept if API tagged military
+  if (apiMil) return true;
+
+  // Accept known military callsign prefixes
+  for (const mil of milCallsigns) {
+    if (callsign.startsWith(mil)) return true;
+  }
+
+  // Accept known military aircraft types
+  for (const t of milAircraftTypes) {
+    if (type.includes(t) || desc.includes(t)) return true;
+  }
+
+  // Accept military registrations (US mil starts with certain patterns)
+  if (/^(AE|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|ADF|RAF|FAF|GAF)/.test(reg)) return true;
+
+  // Accept if operator contains military keywords
+  const milKeywords = ['AIR FORCE','NAVY','ARMY','MARINE','COAST GUARD','MILITARY',
+    'DEFENCE','DEFENSE','LUFTWAFFE','AERONAVALE','ARMEE','FUERZAS','FUERZA AEREA',
+    'AVIATION MILITAIRE','AERONAUTICA','AERONAUTICAL','ROYAL AIR','AERIAL',
+    'GUARDIA','POLICIA AEREA','BORDER PATROL','CUSTOMS','HOMELAND'];
+  for (const kw of milKeywords) {
+    if (operator.includes(kw) || callsign.includes(kw)) return true;
+  }
+
+  // If nothing matched — exclude to keep tracker clean
+  return false;
+}
   const icons = { AIR: '✈', HELO: '🚁', DRONE: '⬡', SHIP: '⬛' };
   return icons[type] || '✈';
 }
@@ -553,7 +670,7 @@ async function fetchAll() {
     });
     if (!res.ok) throw new Error('API error');
     const data = await res.json();
-    const aircraft = (data.ac || []).filter(a => a.lat && a.lon);
+    const aircraft = (data.ac || []).filter(a => a.lat && a.lon && isMilitary(a));
 
     // Map aircraft contacts
     const airContacts = aircraft.map(a => {
