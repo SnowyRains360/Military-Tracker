@@ -446,8 +446,9 @@ const countryData = {
   'UN': { name: 'United Nations', flag: '🇺🇳' },
 };
 
-// Also handle full English names coming from the API
+// Also handle full English names AND native language names from the API
 const nameToData = {
+  // English names
   'UNITED STATES': { name: 'United States', flag: '🇺🇸' },
   'RUSSIA': { name: 'Russia', flag: '🇷🇺' },
   'CHINA': { name: 'China', flag: '🇨🇳' },
@@ -458,6 +459,7 @@ const nameToData = {
   'CANADA': { name: 'Canada', flag: '🇨🇦' },
   'JAPAN': { name: 'Japan', flag: '🇯🇵' },
   'SOUTH KOREA': { name: 'South Korea', flag: '🇰🇷' },
+  'NORTH KOREA': { name: 'North Korea', flag: '🇰🇵' },
   'INDIA': { name: 'India', flag: '🇮🇳' },
   'ISRAEL': { name: 'Israel', flag: '🇮🇱' },
   'TURKEY': { name: 'Turkey', flag: '🇹🇷' },
@@ -474,6 +476,104 @@ const nameToData = {
   'IRAN': { name: 'Iran', flag: '🇮🇷' },
   'BRAZIL': { name: 'Brazil', flag: '🇧🇷' },
   'UKRAINE': { name: 'Ukraine', flag: '🇺🇦' },
+  'SWITZERLAND': { name: 'Switzerland', flag: '🇨🇭' },
+  'AUSTRIA': { name: 'Austria', flag: '🇦🇹' },
+  'PORTUGAL': { name: 'Portugal', flag: '🇵🇹' },
+  'DENMARK': { name: 'Denmark', flag: '🇩🇰' },
+  'FINLAND': { name: 'Finland', flag: '🇫🇮' },
+
+  // Native language names → English
+  // German
+  'DEUTSCHLAND': { name: 'Germany', flag: '🇩🇪' },
+  'ÖSTERREICH': { name: 'Austria', flag: '🇦🇹' },
+  'SCHWEIZ': { name: 'Switzerland', flag: '🇨🇭' },
+  // French
+  'FRANCE': { name: 'France', flag: '🇫🇷' },
+  'BELGIQUE': { name: 'Belgium', flag: '🇧🇪' },
+  'SUISSE': { name: 'Switzerland', flag: '🇨🇭' },
+  // Spanish
+  'ESPAÑA': { name: 'Spain', flag: '🇪🇸' },
+  'ESPANA': { name: 'Spain', flag: '🇪🇸' },
+  'MÉXICO': { name: 'Mexico', flag: '🇲🇽' },
+  'MEXICO': { name: 'Mexico', flag: '🇲🇽' },
+  // Russian
+  'РОССИЯ': { name: 'Russia', flag: '🇷🇺' },
+  'ROSSIYA': { name: 'Russia', flag: '🇷🇺' },
+  // Chinese
+  '中国': { name: 'China', flag: '🇨🇳' },
+  '中華民國': { name: 'Taiwan', flag: '🇹🇼' },
+  // Japanese
+  '日本': { name: 'Japan', flag: '🇯🇵' },
+  'NIHON': { name: 'Japan', flag: '🇯🇵' },
+  // Korean
+  '대한민국': { name: 'South Korea', flag: '🇰🇷' },
+  '조선민주주의인민공화국': { name: 'North Korea', flag: '🇰🇵' },
+  // Dutch
+  'NEDERLAND': { name: 'Netherlands', flag: '🇳🇱' },
+  'NEDERLANDEN': { name: 'Netherlands', flag: '🇳🇱' },
+  // Italian
+  'ITALIA': { name: 'Italy', flag: '🇮🇹' },
+  // Portuguese
+  'BRASIL': { name: 'Brazil', flag: '🇧🇷' },
+  'PORTUGAL': { name: 'Portugal', flag: '🇵🇹' },
+  // Arabic
+  'السعودية': { name: 'Saudi Arabia', flag: '🇸🇦' },
+  'مصر': { name: 'Egypt', flag: '🇪🇬' },
+  'الإمارات': { name: 'United Arab Emirates', flag: '🇦🇪' },
+  'تركيا': { name: 'Turkey', flag: '🇹🇷' },
+  'إيران': { name: 'Iran', flag: '🇮🇷' },
+  // Turkish
+  'TÜRKİYE': { name: 'Turkey', flag: '🇹🇷' },
+  'TURKIYE': { name: 'Turkey', flag: '🇹🇷' },
+  // Greek
+  'ΕΛΛΆΔΑ': { name: 'Greece', flag: '🇬🇷' },
+  'ELLADA': { name: 'Greece', flag: '🇬🇷' },
+  // Polish
+  'POLSKA': { name: 'Poland', flag: '🇵🇱' },
+  // Ukrainian
+  'УКРАЇНА': { name: 'Ukraine', flag: '🇺🇦' },
+  'UKRAINA': { name: 'Ukraine', flag: '🇺🇦' },
+  // Swedish
+  'SVERIGE': { name: 'Sweden', flag: '🇸🇪' },
+  // Norwegian
+  'NORGE': { name: 'Norway', flag: '🇳🇴' },
+  // Danish
+  'DANMARK': { name: 'Denmark', flag: '🇩🇰' },
+  // Finnish
+  'SUOMI': { name: 'Finland', flag: '🇫🇮' },
+  // Hebrew
+  'ישראל': { name: 'Israel', flag: '🇮🇱' },
+  'YISRAEL': { name: 'Israel', flag: '🇮🇱' },
+  // Romanian
+  'ROMÂNIA': { name: 'Romania', flag: '🇷🇴' },
+  'ROMANIA': { name: 'Romania', flag: '🇷🇴' },
+  // Hungarian
+  'MAGYARORSZÁG': { name: 'Hungary', flag: '🇭🇺' },
+  'MAGYARORSZAG': { name: 'Hungary', flag: '🇭🇺' },
+  // Czech
+  'ČESKÁ REPUBLIKA': { name: 'Czech Republic', flag: '🇨🇿' },
+  'CESKA REPUBLIKA': { name: 'Czech Republic', flag: '🇨🇿' },
+  // Slovak
+  'SLOVENSKO': { name: 'Slovakia', flag: '🇸🇰' },
+  // Croatian
+  'HRVATSKA': { name: 'Croatia', flag: '🇭🇷' },
+  // Serbian
+  'СРБИЈА': { name: 'Serbia', flag: '🇷🇸' },
+  'SRBIJA': { name: 'Serbia', flag: '🇷🇸' },
+  // Bulgarian
+  'БЪЛГАРИЯ': { name: 'Bulgaria', flag: '🇧🇬' },
+  'BALGARIYA': { name: 'Bulgaria', flag: '🇧🇬' },
+  // Thai
+  'ไทย': { name: 'Thailand', flag: '🇹🇭' },
+  // Indonesian/Malay
+  'INDONESIA': { name: 'Indonesia', flag: '🇮🇩' },
+  'MALAYSIA': { name: 'Malaysia', flag: '🇲🇾' },
+  // Persian/Farsi
+  'ایران': { name: 'Iran', flag: '🇮🇷' },
+  // Hindi
+  'भारत': { name: 'India', flag: '🇮🇳' },
+  // Urdu
+  'پاکستان': { name: 'Pakistan', flag: '🇵🇰' },
 };
 
 function getCountryInfo(raw) {
