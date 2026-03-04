@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Military Tracker</title>
+
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --bg: #060a0f;
+      --panel: #0b1018;
+      --border: #1a2a1a;
+      --green: #00ff88;
+      --green-dim: #00aa55;
+      --amber: #ffaa00;
+      --red: #ff3344;
+      --blue: #00ccff;
+      --text: #c8d8c8;
+      --dim: #556655;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,255,100,0.012) 2px, rgba(0,255,100,0.012) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .topbar-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.95rem;
+      font-weight: 900;
+      color: var(--green);
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+    }
+    .topbar-title span { color: #fff; }
+    .live-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      background: rgba(255,51,68,0.15);
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: 0.2rem 0.6rem;
+      letter-spacing: 0.15em;
+      animation: blink 1.2s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .topbar-stats {
+      display: flex;
+      gap: 1rem;
+      margin-left: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+    }
+    .topbar-stat { color: var(--dim); }
+    .topbar-stat span { color: var(--green); font-weight: bold; }
+
+    /* MAIN LAYOUT */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* MAP */
+    #map {
+      height: 100%;
+      background: #080e08;
+      z-index: 1;
+    }
+    .leaflet-container { background: #080e08 !important; }
+    .leaflet-tile { filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.6); }
+
+    /* SIDEBAR */
+    .sidebar {
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 10;
+    }
+    .sidebar-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--green);
+      letter-spacing: 0.2em;
+    }
+    .contact-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .contact-item {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .contact-item:hover { background: rgba(0,255,136,0.04); }
+    .contact-flag { font-size: 1.1rem; flex-shrink: 0; }
+    .contact-info { flex: 1; min-width: 0; }
+    .contact-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .contact-meta {
+      font-size: 0.72rem;
+      color: var(--dim);
+      margin-top: 1px;
+    }
+    .contact-type {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.58rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .type-air { background: rgba(0,204,255,0.15); color: var(--blue); border: 1px solid rgba(0,204,255,0.3); }
+    .type-ground { background: rgba(255,170,0,0.15); color: var(--amber); border: 1px solid rgba(255,170,0,0.3); }
+    .type-naval { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+
+    /* DETAIL PANEL */
+    .detail-panel {
+      border-top: 1px solid var(--border);
+      padding: 1rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      min-height: 160px;
+      background: #080e08;
+    }
+    .detail-panel h4 {
+      color: var(--green);
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.75rem;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { color: var(--dim); }
+    .detail-val { color: #fff; text-align: right; }
+    .no-select { color: var(--dim); font-size: 0.65rem; line-height: 1.8; }
+
+    /* FILTER BAR */
+    .filter-bar {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      padding: 0.2rem 0.6rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      letter-spacing: 0.1em;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      border-color: var(--green-dim);
+      color: var(--green);
+      background: rgba(0,255,136,0.05);
+    }
+
+    /* Custom map markers */
+    .mil-marker {
+      font-size: 1.1rem;
+      filter: drop-shadow(0 0 5px rgba(0,255,136,0.6));
+      animation: marker-pulse 2s ease-in-out infinite;
+    }
+    @keyframes marker-pulse {
+      0%,100%{ filter: drop-shadow(0 0 4px rgba(0,255,136,0.5)); }
+      50%{ filter: drop-shadow(0 0 10px rgba(0,255,136,0.9)); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title">MILITARY<span>TRACKER</span></div>
+    <div class="live-badge">● LIVE</div>
+    <div class="topbar-stats">
+      <div class="topbar-stat">AIRCRAFT: <span id="count-air">0</span></div>
+      <div class="topbar-stat">GROUND: <span id="count-ground">0</span></div>
+      <div class="topbar-stat">NATIONS: <span id="count-nations">0</span></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div id="map"></div>
+
+    <div class="sidebar">
+      <div class="sidebar-header">▌ ACTIVE CONTACTS</div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('ALL')">ALL</button>
+        <button class="filter-btn" onclick="setFilter('AIR')">AIR</button>
+        <button class="filter-btn" onclick="setFilter('GROUND')">GROUND</button>
+        <button class="filter-btn" onclick="setFilter('NAVAL')">NAVAL</button>
+      </div>
+      <div class="contact-list" id="contact-list"></div>
+      <div class="detail-panel" id="detail-panel">
+        <h4>▌ CONTACT DETAILS</h4>
+        <div class="no-select">Select a contact from the list<br>or click a marker on the map<br>to view full details.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ═══════════════════════════════════════════
+// VEHICLE DATABASE — Add more here anytime!
+// ═══════════════════════════════════════════
+const vehicles = [
+  // USA
+  { id: 1, name: "B-52H Stratofortress", country: "United States", flag: "🇺🇸", type: "AIR", category: "Strategic Bomber", lat: 38.5, lng: -77.0, speed: "650 mph", alt: "50,000 ft" },
+  { id: 2, name: "F-22 Raptor", country: "United States", flag: "🇺🇸", type: "AIR", category: "Stealth Fighter", lat: 36.0, lng: -115.0, speed: "1,500 mph", alt: "65,000 ft" },
+  { id: 3, name: "M1A2 Abrams", country: "United States", flag: "🇺🇸", type: "GROUND", category: "Main Battle Tank", lat: 31.0, lng: 35.5, speed: "42 mph", alt: "Ground" },
+
+  // Russia
+  { id: 4, name: "Su-57 Felon", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Stealth Fighter", lat: 55.7, lng: 37.6, speed: "1,320 mph", alt: "66,000 ft" },
+  { id: 5, name: "Ka-52 Alligator", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Attack Helicopter", lat: 48.5, lng: 35.0, speed: "186 mph", alt: "1,800 ft" },
+  { id: 6, name: "T-90M Proryv", country: "Russia", flag: "🇷🇺", type: "GROUND", category: "Main Battle Tank", lat: 49.0, lng: 36.5, speed: "37 mph", alt: "Ground" },
+
+  // China
+  { id: 7, name: "J-20 Mighty Dragon", country: "China", flag: "🇨🇳", type: "AIR", category: "Stealth Fighter", lat: 25.0, lng: 121.5, speed: "1,305 mph", alt: "66,000 ft" },
+  { id: 8, name: "H-6K Badger", country: "China", flag: "🇨🇳", type: "AIR", category: "Strategic Bomber", lat: 22.0, lng: 114.0, speed: "620 mph", alt: "43,000 ft" },
+  { id: 9, name: "Type 99A MBT", country: "China", flag: "🇨🇳", type: "GROUND", category: "Main Battle Tank", lat: 30.0, lng: 120.0, speed: "50 mph", alt: "Ground" },
+
+  // UK
+  { id: 10, name: "Eurofighter Typhoon", country: "United Kingdom", flag: "🇬🇧", type: "AIR", category: "Multi-Role Fighter", lat: 51.5, lng: -1.5, speed: "1,320 mph", alt: "55,000 ft" },
+
+  // NATO
+  { id: 11, name: "E-3 Sentry AWACS", country: "NATO", flag: "🌐", type: "AIR", category: "Early Warning Aircraft", lat: 50.0, lng: 10.0, speed: "530 mph", alt: "30,000 ft" },
+];
+
+// ═══════════════════════════
+// MAP SETUP
+// ═══════════════════════════
+const map = L.map('map', {
+  center: [30, 30],
+  zoom: 3,
+  zoomControl: true,
+  attributionControl: false
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18
+}).addTo(map);
+
+// ═══════════════════════════
+// STATE
+// ═══════════════════════════
+let activeFilter = 'ALL';
+let markers = {};
+
+function setFilter(f) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderAll();
+}
+
+function getIcon(type) {
+  const icons = { AIR: '✈', GROUND: '🚗', NAVAL: '⚓' };
+  return icons[type] || '●';
+}
+
+function getTypeClass(type) {
+  return { AIR: 'type-air', GROUND: 'type-ground', NAVAL: 'type-naval' }[type] || 'type-air';
+}
+
+function showDetail(v) {
+  document.getElementById('detail-panel').innerHTML = `
+    <h4>▌ CONTACT DETAILS</h4>
+    <div class="detail-row"><span class="detail-key">NAME</span><span class="detail-val">${v.name}</span></div>
+    <div class="detail-row"><span class="detail-key">COUNTRY</span><span class="detail-val">${v.flag} ${v.country}</span></div>
+    <div class="detail-row"><span class="detail-key">CLASS</span><span class="detail-val">${v.category}</span></div>
+    <div class="detail-row"><span class="detail-key">TYPE</span><span class="detail-val">${v.type}</span></div>
+    <div class="detail-row"><span class="detail-key">SPEED</span><span class="detail-val">${v.speed}</span></div>
+    <div class="detail-row"><span class="detail-key">ALTITUDE</span><span class="detail-val">${v.alt}</span></div>
+    <div class="detail-row"><span class="detail-key">POSITION</span><span class="detail-val">${v.lat.toFixed(2)}°, ${v.lng.toFixed(2)}°</span></div>
+  `;
+}
+
+function renderAll() {
+  // Clear markers
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  const list = document.getElementById('contact-list');
+  list.innerHTML = '';
+
+  const filtered = vehicles.filter(v => activeFilter === 'ALL' || v.type === activeFilter);
+
+  // Update counts
+  document.getElementById('count-air').textContent = vehicles.filter(v => v.type === 'AIR').length;
+  document.getElementById('count-ground').textContent = vehicles.filter(v => v.type === 'GROUND').length;
+  const nations = [...new Set(vehicles.map(v => v.country))].length;
+  document.getElementById('count-nations').textContent = nations;
+
+  filtered.forEach(v => {
+    // Map marker
+    const icon = L.divIcon({
+      html: `<div class="mil-marker" title="${v.name}">${getIcon(v.type)}</div>`,
+      className: '',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    const marker = L.marker([v.lat, v.lng], { icon })
+      .addTo(map)
+      .bindPopup(`<b>${v.flag} ${v.name}</b><br>${v.country}<br>${v.category}`)
+      .on('click', () => showDetail(v));
+
+    markers[v.id] = marker;
+
+    // Sidebar row
+    const row = document.createElement('div');
+    row.className = 'contact-item';
+    row.innerHTML = `
+      <span class="contact-flag">${v.flag}</span>
+      <div class="contact-info">
+        <div class="contact-name">${v.name}</div>
+        <div class="contact-meta">${v.country} · ${v.category}</div>
+      </div>
+      <span class="contact-type ${getTypeClass(v.type)}">${v.type}</span>
+    `;
+    row.onclick = () => {
+      map.setView([v.lat, v.lng], 5);
+      showDetail(v);
+      markers[v.id].openPopup();
+    };
+    list.appendChild(row);
+  });
+}
+
+renderAll();
+</script>
+</body>
+</html>
