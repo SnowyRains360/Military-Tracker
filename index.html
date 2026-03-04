@@ -3,15 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Military Tracker</title>
-
-  <!-- Leaflet Map -->
+  <title>Military Tracker — Login</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet"/>
-
   <style>
     :root {
       --bg: #060a0f;
@@ -35,8 +30,6 @@
       flex-direction: column;
       overflow: hidden;
     }
-
-    /* Scanlines */
     body::before {
       content: '';
       position: fixed;
@@ -49,7 +42,116 @@
       z-index: 9999;
     }
 
-    /* TOP BAR */
+    /* LOGIN */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .login-box {
+      background: var(--panel);
+      border: 1px solid var(--green-dim);
+      padding: 3rem 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 0 60px rgba(0,255,136,0.08);
+      text-align: center;
+    }
+    .login-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--green);
+      border: 1px solid var(--green-dim);
+      padding: 0.25rem 1rem;
+      letter-spacing: 0.2em;
+      display: inline-block;
+      margin-bottom: 1.5rem;
+      animation: pulse-border 2s ease-in-out infinite;
+    }
+    @keyframes pulse-border {
+      0%,100% { border-color: var(--green-dim); }
+      50% { border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+    }
+    .login-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.3rem;
+    }
+    .login-title span { color: var(--green); }
+    .login-subtitle {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      margin-bottom: 2rem;
+    }
+    .login-input {
+      width: 100%;
+      background: #080e08;
+      border: 1px solid var(--border);
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      padding: 0.85rem 1rem;
+      letter-spacing: 0.15em;
+      outline: none;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s;
+      text-align: center;
+    }
+    .login-input:focus { border-color: var(--green-dim); }
+    .login-input::placeholder { color: var(--dim); letter-spacing: 0.1em; }
+    .login-btn {
+      width: 100%;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.85rem;
+      letter-spacing: 0.2em;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .login-btn:hover {
+      background: rgba(0,255,136,0.2);
+      box-shadow: 0 0 20px rgba(0,255,136,0.15);
+    }
+    .login-error {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--red);
+      margin-top: 0.75rem;
+      letter-spacing: 0.1em;
+      height: 1rem;
+    }
+    .login-disclaimer {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--dim);
+      margin-top: 1.5rem;
+      line-height: 1.7;
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+
+    /* APP */
+    #app { display: none; flex-direction: column; height: 100vh; }
+    #app.visible { display: flex; }
+
     .topbar {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
@@ -83,31 +185,35 @@
     .topbar-stats {
       display: flex;
       gap: 1rem;
-      margin-left: auto;
       font-family: 'Share Tech Mono', monospace;
       font-size: 0.7rem;
     }
     .topbar-stat { color: var(--dim); }
     .topbar-stat span { color: var(--green); font-weight: bold; }
+    .logout-btn {
+      margin-left: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      padding: 0.25rem 0.75rem;
+      cursor: pointer;
+      letter-spacing: 0.1em;
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
-    /* MAIN LAYOUT */
     .main {
       display: grid;
       grid-template-columns: 1fr 280px;
       flex: 1;
       overflow: hidden;
     }
-
-    /* MAP */
-    #map {
-      height: 100%;
-      background: #080e08;
-      z-index: 1;
-    }
+    #map { height: 100%; background: #080e08; z-index: 1; }
     .leaflet-container { background: #080e08 !important; }
     .leaflet-tile { filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.6); }
 
-    /* SIDEBAR */
     .sidebar {
       background: var(--panel);
       border-left: 1px solid var(--border);
@@ -150,11 +256,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .contact-meta {
-      font-size: 0.72rem;
-      color: var(--dim);
-      margin-top: 1px;
-    }
+    .contact-meta { font-size: 0.72rem; color: var(--dim); margin-top: 1px; }
     .contact-type {
       font-family: 'Share Tech Mono', monospace;
       font-size: 0.58rem;
@@ -166,7 +268,6 @@
     .type-ground { background: rgba(255,170,0,0.15); color: var(--amber); border: 1px solid rgba(255,170,0,0.3); }
     .type-naval { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
 
-    /* DETAIL PANEL */
     .detail-panel {
       border-top: 1px solid var(--border);
       padding: 1rem;
@@ -186,20 +287,17 @@
       justify-content: space-between;
       padding: 0.3rem 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
-      color: var(--text);
     }
     .detail-row:last-child { border-bottom: none; }
     .detail-key { color: var(--dim); }
     .detail-val { color: #fff; text-align: right; }
     .no-select { color: var(--dim); font-size: 0.65rem; line-height: 1.8; }
 
-    /* FILTER BAR */
     .filter-bar {
       padding: 0.6rem 1rem;
       border-bottom: 1px solid var(--border);
       display: flex;
       gap: 0.4rem;
-      flex-wrap: wrap;
     }
     .filter-btn {
       font-family: 'Share Tech Mono', monospace;
@@ -217,8 +315,6 @@
       color: var(--green);
       background: rgba(0,255,136,0.05);
     }
-
-    /* Custom map markers */
     .mil-marker {
       font-size: 1.1rem;
       filter: drop-shadow(0 0 5px rgba(0,255,136,0.6));
@@ -232,166 +328,158 @@
 </head>
 <body>
 
-  <!-- TOP BAR -->
-  <div class="topbar">
-    <div class="topbar-title">MILITARY<span>TRACKER</span></div>
-    <div class="live-badge">● LIVE</div>
-    <div class="topbar-stats">
-      <div class="topbar-stat">AIRCRAFT: <span id="count-air">0</span></div>
-      <div class="topbar-stat">GROUND: <span id="count-ground">0</span></div>
-      <div class="topbar-stat">NATIONS: <span id="count-nations">0</span></div>
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-badge">▌ RESTRICTED ACCESS ▌</div>
+      <div class="login-title">MILITARY<span>TRACKER</span></div>
+      <div class="login-subtitle">// AUTHORIZED PERSONNEL ONLY</div>
+      <input class="login-input" type="password" id="password-input"
+        placeholder="ENTER ACCESS CODE"
+        onkeydown="if(event.key==='Enter') checkPassword()"
+        autocomplete="off"/>
+      <button class="login-btn" onclick="checkPassword()">▸ AUTHENTICATE</button>
+      <div class="login-error" id="login-error"></div>
+      <div class="login-disclaimer">
+        This is a private, independent tracker.<br>
+        Not affiliated with any government or military organization.
+      </div>
     </div>
   </div>
 
-  <!-- MAIN -->
-  <div class="main">
-    <div id="map"></div>
-
-    <div class="sidebar">
-      <div class="sidebar-header">▌ ACTIVE CONTACTS</div>
-      <div class="filter-bar">
-        <button class="filter-btn active" onclick="setFilter('ALL')">ALL</button>
-        <button class="filter-btn" onclick="setFilter('AIR')">AIR</button>
-        <button class="filter-btn" onclick="setFilter('GROUND')">GROUND</button>
-        <button class="filter-btn" onclick="setFilter('NAVAL')">NAVAL</button>
+  <!-- APP -->
+  <div id="app">
+    <div class="topbar">
+      <div class="topbar-title">MILITARY<span>TRACKER</span></div>
+      <div class="live-badge">● LIVE</div>
+      <div class="topbar-stats">
+        <div class="topbar-stat">AIRCRAFT: <span id="count-air">0</span></div>
+        <div class="topbar-stat">GROUND: <span id="count-ground">0</span></div>
+        <div class="topbar-stat">NATIONS: <span id="count-nations">0</span></div>
       </div>
-      <div class="contact-list" id="contact-list"></div>
-      <div class="detail-panel" id="detail-panel">
-        <h4>▌ CONTACT DETAILS</h4>
-        <div class="no-select">Select a contact from the list<br>or click a marker on the map<br>to view full details.</div>
+      <button class="logout-btn" onclick="logout()">⏏ LOGOUT</button>
+    </div>
+    <div class="main">
+      <div id="map"></div>
+      <div class="sidebar">
+        <div class="sidebar-header">▌ ACTIVE CONTACTS</div>
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="setFilter('ALL',event)">ALL</button>
+          <button class="filter-btn" onclick="setFilter('AIR',event)">AIR</button>
+          <button class="filter-btn" onclick="setFilter('GROUND',event)">GROUND</button>
+          <button class="filter-btn" onclick="setFilter('NAVAL',event)">NAVAL</button>
+        </div>
+        <div class="contact-list" id="contact-list"></div>
+        <div class="detail-panel" id="detail-panel">
+          <h4>▌ CONTACT DETAILS</h4>
+          <div class="no-select">Select a contact from the list<br>or click a marker on the map<br>to view full details.</div>
+        </div>
       </div>
     </div>
   </div>
 
 <script>
-// ═══════════════════════════════════════════
-// VEHICLE DATABASE — Add more here anytime!
-// ═══════════════════════════════════════════
-const vehicles = [
-  // USA
-  { id: 1, name: "B-52H Stratofortress", country: "United States", flag: "🇺🇸", type: "AIR", category: "Strategic Bomber", lat: 38.5, lng: -77.0, speed: "650 mph", alt: "50,000 ft" },
-  { id: 2, name: "F-22 Raptor", country: "United States", flag: "🇺🇸", type: "AIR", category: "Stealth Fighter", lat: 36.0, lng: -115.0, speed: "1,500 mph", alt: "65,000 ft" },
-  { id: 3, name: "M1A2 Abrams", country: "United States", flag: "🇺🇸", type: "GROUND", category: "Main Battle Tank", lat: 31.0, lng: 35.5, speed: "42 mph", alt: "Ground" },
+  const CORRECT_PASSWORD = "MilTrack#7291!";
 
-  // Russia
-  { id: 4, name: "Su-57 Felon", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Stealth Fighter", lat: 55.7, lng: 37.6, speed: "1,320 mph", alt: "66,000 ft" },
-  { id: 5, name: "Ka-52 Alligator", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Attack Helicopter", lat: 48.5, lng: 35.0, speed: "186 mph", alt: "1,800 ft" },
-  { id: 6, name: "T-90M Proryv", country: "Russia", flag: "🇷🇺", type: "GROUND", category: "Main Battle Tank", lat: 49.0, lng: 36.5, speed: "37 mph", alt: "Ground" },
+  function checkPassword() {
+    const input = document.getElementById('password-input').value;
+    const error = document.getElementById('login-error');
+    if (input === CORRECT_PASSWORD) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      initMap();
+    } else {
+      error.textContent = '⚠ ACCESS DENIED — INVALID CODE';
+      document.getElementById('password-input').value = '';
+      setTimeout(() => error.textContent = '', 3000);
+    }
+  }
 
-  // China
-  { id: 7, name: "J-20 Mighty Dragon", country: "China", flag: "🇨🇳", type: "AIR", category: "Stealth Fighter", lat: 25.0, lng: 121.5, speed: "1,305 mph", alt: "66,000 ft" },
-  { id: 8, name: "H-6K Badger", country: "China", flag: "🇨🇳", type: "AIR", category: "Strategic Bomber", lat: 22.0, lng: 114.0, speed: "620 mph", alt: "43,000 ft" },
-  { id: 9, name: "Type 99A MBT", country: "China", flag: "🇨🇳", type: "GROUND", category: "Main Battle Tank", lat: 30.0, lng: 120.0, speed: "50 mph", alt: "Ground" },
+  function logout() {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
+    document.getElementById('password-input').value = '';
+  }
 
-  // UK
-  { id: 10, name: "Eurofighter Typhoon", country: "United Kingdom", flag: "🇬🇧", type: "AIR", category: "Multi-Role Fighter", lat: 51.5, lng: -1.5, speed: "1,320 mph", alt: "55,000 ft" },
+  const vehicles = [
+    { id: 1, name: "B-52H Stratofortress", country: "United States", flag: "🇺🇸", type: "AIR", category: "Strategic Bomber", lat: 38.5, lng: -77.0, speed: "650 mph", alt: "50,000 ft" },
+    { id: 2, name: "F-22 Raptor", country: "United States", flag: "🇺🇸", type: "AIR", category: "Stealth Fighter", lat: 36.0, lng: -115.0, speed: "1,500 mph", alt: "65,000 ft" },
+    { id: 3, name: "M1A2 Abrams", country: "United States", flag: "🇺🇸", type: "GROUND", category: "Main Battle Tank", lat: 31.0, lng: 35.5, speed: "42 mph", alt: "Ground" },
+    { id: 4, name: "Su-57 Felon", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Stealth Fighter", lat: 55.7, lng: 37.6, speed: "1,320 mph", alt: "66,000 ft" },
+    { id: 5, name: "Ka-52 Alligator", country: "Russia", flag: "🇷🇺", type: "AIR", category: "Attack Helicopter", lat: 48.5, lng: 35.0, speed: "186 mph", alt: "1,800 ft" },
+    { id: 6, name: "T-90M Proryv", country: "Russia", flag: "🇷🇺", type: "GROUND", category: "Main Battle Tank", lat: 49.0, lng: 36.5, speed: "37 mph", alt: "Ground" },
+    { id: 7, name: "J-20 Mighty Dragon", country: "China", flag: "🇨🇳", type: "AIR", category: "Stealth Fighter", lat: 25.0, lng: 121.5, speed: "1,305 mph", alt: "66,000 ft" },
+    { id: 8, name: "H-6K Badger", country: "China", flag: "🇨🇳", type: "AIR", category: "Strategic Bomber", lat: 22.0, lng: 114.0, speed: "620 mph", alt: "43,000 ft" },
+    { id: 9, name: "Type 99A MBT", country: "China", flag: "🇨🇳", type: "GROUND", category: "Main Battle Tank", lat: 30.0, lng: 120.0, speed: "50 mph", alt: "Ground" },
+    { id: 10, name: "Eurofighter Typhoon", country: "United Kingdom", flag: "🇬🇧", type: "AIR", category: "Multi-Role Fighter", lat: 51.5, lng: -1.5, speed: "1,320 mph", alt: "55,000 ft" },
+    { id: 11, name: "E-3 Sentry AWACS", country: "NATO", flag: "🌐", type: "AIR", category: "Early Warning Aircraft", lat: 50.0, lng: 10.0, speed: "530 mph", alt: "30,000 ft" },
+  ];
 
-  // NATO
-  { id: 11, name: "E-3 Sentry AWACS", country: "NATO", flag: "🌐", type: "AIR", category: "Early Warning Aircraft", lat: 50.0, lng: 10.0, speed: "530 mph", alt: "30,000 ft" },
-];
+  let map, markers = {}, activeFilter = 'ALL';
 
-// ═══════════════════════════
-// MAP SETUP
-// ═══════════════════════════
-const map = L.map('map', {
-  center: [30, 30],
-  zoom: 3,
-  zoomControl: true,
-  attributionControl: false
-});
+  function initMap() {
+    if (map) return;
+    map = L.map('map', { center: [30, 30], zoom: 3, zoomControl: true, attributionControl: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    renderAll();
+  }
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18
-}).addTo(map);
+  function setFilter(f, event) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    renderAll();
+  }
 
-// ═══════════════════════════
-// STATE
-// ═══════════════════════════
-let activeFilter = 'ALL';
-let markers = {};
+  function getIcon(type) { return { AIR: '✈', GROUND: '🚗', NAVAL: '⚓' }[type] || '●'; }
+  function getTypeClass(type) { return { AIR: 'type-air', GROUND: 'type-ground', NAVAL: 'type-naval' }[type] || 'type-air'; }
 
-function setFilter(f) {
-  activeFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  renderAll();
-}
-
-function getIcon(type) {
-  const icons = { AIR: '✈', GROUND: '🚗', NAVAL: '⚓' };
-  return icons[type] || '●';
-}
-
-function getTypeClass(type) {
-  return { AIR: 'type-air', GROUND: 'type-ground', NAVAL: 'type-naval' }[type] || 'type-air';
-}
-
-function showDetail(v) {
-  document.getElementById('detail-panel').innerHTML = `
-    <h4>▌ CONTACT DETAILS</h4>
-    <div class="detail-row"><span class="detail-key">NAME</span><span class="detail-val">${v.name}</span></div>
-    <div class="detail-row"><span class="detail-key">COUNTRY</span><span class="detail-val">${v.flag} ${v.country}</span></div>
-    <div class="detail-row"><span class="detail-key">CLASS</span><span class="detail-val">${v.category}</span></div>
-    <div class="detail-row"><span class="detail-key">TYPE</span><span class="detail-val">${v.type}</span></div>
-    <div class="detail-row"><span class="detail-key">SPEED</span><span class="detail-val">${v.speed}</span></div>
-    <div class="detail-row"><span class="detail-key">ALTITUDE</span><span class="detail-val">${v.alt}</span></div>
-    <div class="detail-row"><span class="detail-key">POSITION</span><span class="detail-val">${v.lat.toFixed(2)}°, ${v.lng.toFixed(2)}°</span></div>
-  `;
-}
-
-function renderAll() {
-  // Clear markers
-  Object.values(markers).forEach(m => map.removeLayer(m));
-  markers = {};
-
-  const list = document.getElementById('contact-list');
-  list.innerHTML = '';
-
-  const filtered = vehicles.filter(v => activeFilter === 'ALL' || v.type === activeFilter);
-
-  // Update counts
-  document.getElementById('count-air').textContent = vehicles.filter(v => v.type === 'AIR').length;
-  document.getElementById('count-ground').textContent = vehicles.filter(v => v.type === 'GROUND').length;
-  const nations = [...new Set(vehicles.map(v => v.country))].length;
-  document.getElementById('count-nations').textContent = nations;
-
-  filtered.forEach(v => {
-    // Map marker
-    const icon = L.divIcon({
-      html: `<div class="mil-marker" title="${v.name}">${getIcon(v.type)}</div>`,
-      className: '',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
-
-    const marker = L.marker([v.lat, v.lng], { icon })
-      .addTo(map)
-      .bindPopup(`<b>${v.flag} ${v.name}</b><br>${v.country}<br>${v.category}`)
-      .on('click', () => showDetail(v));
-
-    markers[v.id] = marker;
-
-    // Sidebar row
-    const row = document.createElement('div');
-    row.className = 'contact-item';
-    row.innerHTML = `
-      <span class="contact-flag">${v.flag}</span>
-      <div class="contact-info">
-        <div class="contact-name">${v.name}</div>
-        <div class="contact-meta">${v.country} · ${v.category}</div>
-      </div>
-      <span class="contact-type ${getTypeClass(v.type)}">${v.type}</span>
+  function showDetail(v) {
+    document.getElementById('detail-panel').innerHTML = `
+      <h4>▌ CONTACT DETAILS</h4>
+      <div class="detail-row"><span class="detail-key">NAME</span><span class="detail-val">${v.name}</span></div>
+      <div class="detail-row"><span class="detail-key">COUNTRY</span><span class="detail-val">${v.flag} ${v.country}</span></div>
+      <div class="detail-row"><span class="detail-key">CLASS</span><span class="detail-val">${v.category}</span></div>
+      <div class="detail-row"><span class="detail-key">TYPE</span><span class="detail-val">${v.type}</span></div>
+      <div class="detail-row"><span class="detail-key">SPEED</span><span class="detail-val">${v.speed}</span></div>
+      <div class="detail-row"><span class="detail-key">ALTITUDE</span><span class="detail-val">${v.alt}</span></div>
+      <div class="detail-row"><span class="detail-key">POSITION</span><span class="detail-val">${v.lat.toFixed(2)}°, ${v.lng.toFixed(2)}°</span></div>
     `;
-    row.onclick = () => {
-      map.setView([v.lat, v.lng], 5);
-      showDetail(v);
-      markers[v.id].openPopup();
-    };
-    list.appendChild(row);
-  });
-}
+  }
 
-renderAll();
+  function renderAll() {
+    Object.values(markers).forEach(m => map.removeLayer(m));
+    markers = {};
+    const list = document.getElementById('contact-list');
+    list.innerHTML = '';
+    const filtered = vehicles.filter(v => activeFilter === 'ALL' || v.type === activeFilter);
+    document.getElementById('count-air').textContent = vehicles.filter(v => v.type === 'AIR').length;
+    document.getElementById('count-ground').textContent = vehicles.filter(v => v.type === 'GROUND').length;
+    document.getElementById('count-nations').textContent = [...new Set(vehicles.map(v => v.country))].length;
+    filtered.forEach(v => {
+      const icon = L.divIcon({
+        html: `<div class="mil-marker">${getIcon(v.type)}</div>`,
+        className: '', iconSize: [24, 24], iconAnchor: [12, 12]
+      });
+      const marker = L.marker([v.lat, v.lng], { icon })
+        .addTo(map)
+        .bindPopup(`<b>${v.flag} ${v.name}</b><br>${v.country}<br>${v.category}`)
+        .on('click', () => showDetail(v));
+      markers[v.id] = marker;
+      const row = document.createElement('div');
+      row.className = 'contact-item';
+      row.innerHTML = `
+        <span class="contact-flag">${v.flag}</span>
+        <div class="contact-info">
+          <div class="contact-name">${v.name}</div>
+          <div class="contact-meta">${v.country} · ${v.category}</div>
+        </div>
+        <span class="contact-type ${getTypeClass(v.type)}">${v.type}</span>
+      `;
+      row.onclick = () => { map.setView([v.lat, v.lng], 5); showDetail(v); markers[v.id].openPopup(); };
+      list.appendChild(row);
+    });
+  }
 </script>
 </body>
 </html>
