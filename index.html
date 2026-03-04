@@ -662,12 +662,24 @@ async function fetchAll() {
   status.textContent = 'FETCHING DATA...';
   status.className = 'refresh-status loading';
 
+  // Always hide loading after 8 seconds no matter what
+  const loadingTimeout = setTimeout(() => {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }, 8000);
+
   try {
     document.getElementById('loading-sub').textContent = 'CONNECTING TO MILITARY AIR FEED...';
 
+    // Add a 10 second timeout to the fetch
+    const controller = new AbortController();
+    const fetchTimeout = setTimeout(() => controller.abort(), 10000);
+
     const res = await fetch('https://api.airplanes.live/v2/mil', {
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
     });
+    clearTimeout(fetchTimeout);
     if (!res.ok) throw new Error('API error');
     const data = await res.json();
     const aircraft = (data.ac || []).filter(a => a.lat && a.lon && isMilitary(a));
@@ -714,6 +726,7 @@ async function fetchAll() {
     status.className = 'refresh-status ok';
 
     // Hide loading
+    clearTimeout(loadingTimeout);
     const overlay = document.getElementById('loading-overlay');
     if (overlay) overlay.style.display = 'none';
 
@@ -730,6 +743,7 @@ async function fetchAll() {
 
   } catch (err) {
     console.error(err);
+    clearTimeout(loadingTimeout);
     status.textContent = 'CONNECTION ERROR — RETRYING...';
     status.className = 'refresh-status error';
     document.getElementById('loading-overlay').style.display = 'none';
