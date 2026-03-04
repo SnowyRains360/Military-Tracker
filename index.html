@@ -250,7 +250,8 @@
     #loading-overlay {
       position: fixed; inset: 0;
       background: var(--bg);
-      display: flex; flex-direction: column;
+      display: none;
+      flex-direction: column;
       align-items: center; justify-content: center;
       z-index: 500; gap: 1rem;
     }
@@ -284,7 +285,20 @@
     .legend-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0; color: var(--text); }
     .legend-icon { font-size: 0.85rem; width: 1.2rem; text-align: center; }
 
-    .disclaimer {
+    .trail-toggle {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      background: rgba(0,255,136,0.08);
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      padding: 0.25rem 0.75rem;
+      cursor: pointer;
+      letter-spacing: 0.1em;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .trail-toggle:hover { background: rgba(0,255,136,0.15); }
+    .trail-toggle.off { border-color: var(--border); color: var(--dim); background: transparent; }
       position: fixed; bottom: 6px; left: 50%; transform: translateX(-50%);
       font-family: 'Share Tech Mono', monospace; font-size: 0.52rem;
       color: var(--dim); letter-spacing: 0.05em;
@@ -313,6 +327,7 @@
       <div class="topbar-stat stat-total">▌ TOTAL: <span id="count-total">0</span></div>
     </div>
     <div class="refresh-status" id="refresh-status">INITIALIZING...</div>
+    <button class="trail-toggle" id="trail-toggle" onclick="toggleTrails()">◈ TRAILS ON</button>
   </div>
 
   <!-- FILTER TABS -->
@@ -642,7 +657,7 @@ const demoShips = [
 // ═══════════════════════════════════════════════════════
 // AIS LIVE SHIP DATA — PASTE YOUR KEY BELOW
 // ═══════════════════════════════════════════════════════
-const AISSTREAM_KEY = '63d8c650836b23508272f0c9069e59893e44b95f'; // ← PASTE YOUR KEY HERE
+const AISSTREAM_KEY = 'YOUR_API_KEY_HERE'; // ← PASTE YOUR KEY HERE
 
 let aisSocket = null;
 let liveShips = {};
@@ -752,6 +767,12 @@ let selectedIcao = null;
 let activeFilter = 'ALL';
 let searchQuery = '';
 
+// TRAIL SYSTEM
+let trails = {};        // icao → array of [lat, lng] positions
+let trailLines = {};    // icao → Leaflet polyline
+let trailsEnabled = true;
+const MAX_TRAIL_POINTS = 20; // Keep last 20 positions per aircraft
+
 // ═══════════════════════════════════════════════════════
 // FETCH LIVE DATA
 // ═══════════════════════════════════════════════════════
@@ -860,9 +881,45 @@ function updateMarkers() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
+  // Remove old trail lines
+  Object.values(trailLines).forEach(segments => {
+    if (Array.isArray(segments)) segments.forEach(l => map.removeLayer(l));
+    else map.removeLayer(segments);
+  });
+  trailLines = {};
+
   const filtered = allContacts.filter(c => activeFilter === 'ALL' || c.type === activeFilter);
 
   filtered.forEach(c => {
+    // UPDATE TRAIL POSITIONS
+    if (trailsEnabled && c.type !== 'SHIP') {
+      if (!trails[c.icao]) trails[c.icao] = [];
+      const trail = trails[c.icao];
+      const last = trail[trail.length - 1];
+      // Only add if position changed
+      if (!last || last[0] !== c.lat || last[1] !== c.lng) {
+        trail.push([c.lat, c.lng]);
+        if (trail.length > MAX_TRAIL_POINTS) trail.shift();
+      }
+
+      // Draw trail line if we have 2+ points
+      if (trail.length >= 2) {
+        const color = getVehicleColor(c.type);
+        // Create gradient effect — older points more transparent
+        for (let i = 1; i < trail.length; i++) {
+          const opacity = (i / trail.length) * 0.7;
+          const weight = (i / trail.length) * 2;
+          const segment = L.polyline([trail[i-1], trail[i]], {
+            color: color,
+            weight: weight,
+            opacity: opacity,
+            smoothFactor: 1,
+          }).addTo(map);
+          if (!trailLines[c.icao]) trailLines[c.icao] = [];
+          trailLines[c.icao].push(segment);
+        }
+      }
+    }
     const color = getVehicleColor(c.type);
     const icon_char = getVehicleIcon(c.type);
     const heading = c.heading ? parseInt(c.heading) : 0;
@@ -905,6 +962,25 @@ function updateMarkers() {
 // ═══════════════════════════════════════════════════════
 // FILTER & SIDEBAR
 // ═══════════════════════════════════════════════════════
+function toggleTrails() {
+  trailsEnabled = !trailsEnabled;
+  const btn = document.getElementById('trail-toggle');
+  if (trailsEnabled) {
+    btn.textContent = '◈ TRAILS ON';
+    btn.classList.remove('off');
+  } else {
+    btn.textContent = '◈ TRAILS OFF';
+    btn.classList.add('off');
+    // Clear all trails
+    trails = {};
+    Object.values(trailLines).forEach(segments => {
+      if (Array.isArray(segments)) segments.forEach(l => map.removeLayer(l));
+      else map.removeLayer(segments);
+    });
+    trailLines = {};
+  }
+}
+
 function setFilter(f, btn) {
   activeFilter = f;
   document.querySelectorAll('.filter-tab').forEach(b => {
