@@ -172,8 +172,7 @@
 // ── CONFIG ──────────────────────────────────────────────────────────
 const REFRESH_MS = 30000;
 const MAX_HIST   = 25;      // tracer history points
-const CIV_LIMIT  = 3000;   // cap civil aircraft
-const HIT_PX     = 14;     // click hit radius in pixels
+const HIT_PX     = 10;     // click hit radius in pixels
 
 const MIL_API = 'https://api.adsb.lol/v2/mil';
 const CIV_API = 'https://opensky-network.org/api/states/all';
@@ -254,7 +253,7 @@ function drawFrame() {
     const x = pt.x, y = pt.y;
     const sel   = ac.icao === selectedIcao;
     const type  = ac.isCivil ? 'civil' : getType(ac);
-    const color = sel ? '#ff4455' : TYPE_COLORS[type];
+    const color = sel ? '#ffffff' : (ac.isCivil ? '#22aaff' : TYPE_COLORS[type]);
 
     // --- tracer path (drawn before icon so icon sits on top) ---
     if (sel) {
@@ -301,15 +300,15 @@ function drawFrame() {
       ctx.setLineDash([]);
     }
 
-    ctx.globalAlpha = ac.onGround ? 0.45 : 1;
+    // Simple dot — fast to render at any scale
+    const radius = sel ? 5 : (ac.onGround ? 2 : 3);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fillStyle   = color;
+    ctx.globalAlpha = ac.onGround ? 0.5 : 1;
     ctx.shadowColor = color;
-    ctx.shadowBlur  = sel ? 8 : 3;
-
-    const hdg = (ac.hdg || 0) * Math.PI / 180;
-    ctx.rotate(hdg);
-
-    drawIcon(type);
+    ctx.shadowBlur  = sel ? 8 : 0;
+    ctx.fill();
 
     ctx.restore();
   }
@@ -435,7 +434,6 @@ async function fetchCivil() {
     const d = await r.json();
     return (d.states || [])
       .filter(s => s[6] != null && s[5] != null)
-      .slice(0, CIV_LIMIT)
       .map(s => ({
         icao:     s[0],
         callsign: (s[1] || s[0]).trim(),
