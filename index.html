@@ -640,9 +640,107 @@ const demoShips = [
 ];
 
 // ═══════════════════════════════════════════════════════
-// MAP SETUP
+// AIS LIVE SHIP DATA — PASTE YOUR KEY BELOW
 // ═══════════════════════════════════════════════════════
-const map = L.map('map', { center: [30, 10], zoom: 3, zoomControl: true, attributionControl: false });
+const AISSTREAM_KEY = '63d8c650836b23508272f0c9069e59893e44b95f'; // ← PASTE YOUR KEY HERE
+
+let aisSocket = null;
+let liveShips = {};
+
+function connectAIS() {
+  if (!AISSTREAM_KEY || AISSTREAM_KEY === 'YOUR_API_KEY_HERE') return;
+
+  try {
+    aisSocket = new WebSocket('wss://stream.aisstream.io/v0/stream');
+
+    aisSocket.onopen = () => {
+      console.log('AIS connected');
+      // Subscribe to military vessel types worldwide
+      aisSocket.send(JSON.stringify({
+        APIKey: AISSTREAM_KEY,
+        BoundingBoxes: [[[-90, -180], [90, 180]]],
+        FilterMessageTypes: ['PositionReport', 'ShipStaticData'],
+        // Filter for naval vessel types
+        // Type 35 = Military operations
+        ShipTypes: [35]
+      }));
+    };
+
+    aisSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const msg = data.Message;
+        const meta = data.MetaData;
+
+        if (!meta || !meta.latitude || !meta.longitude) return;
+
+        const mmsi = meta.MMSI?.toString() || '';
+        const shipName = (meta.ShipName || mmsi || 'UNKNOWN').trim();
+        const countryInfo = getCountryInfo(meta.flag || '');
+
+        liveShips[mmsi] = {
+          icao: 'ship-' + mmsi,
+          callsign: shipName,
+          country: countryInfo.name,
+          flag: countryInfo.flag,
+          type: 'SHIP',
+          subtype: getShipType(msg?.ShipStaticData?.Type || 35),
+          lat: parseFloat(meta.latitude),
+          lng: parseFloat(meta.longitude),
+          altitude: 'Surface',
+          speed: msg?.PositionReport?.Sog ? `${msg.PositionReport.Sog.toFixed(1)} kts` : 'N/A',
+          heading: msg?.PositionReport?.Cog ? `${Math.round(msg.PositionReport.Cog)}°` : 'N/A',
+          squawk: 'N/A',
+          registration: mmsi,
+          location: 'Locating...',
+        };
+
+        // Update contacts with fresh ship data
+        rebuildContacts();
+
+      } catch(e) { console.error('AIS parse error', e); }
+    };
+
+    aisSocket.onerror = (e) => console.error('AIS error:', e);
+    aisSocket.onclose = () => {
+      console.log('AIS disconnected — reconnecting in 30s');
+      setTimeout(connectAIS, 30000);
+    };
+
+  } catch(e) { console.error('AIS connect error:', e); }
+}
+
+function getShipType(typeCode) {
+  const types = {
+    35: 'Military Operations',
+    36: 'Sailing Vessel',
+    37: 'Pleasure Craft',
+    50: 'Pilot Vessel',
+    51: 'Search & Rescue',
+    55: 'Law Enforcement',
+    58: 'Medical Transport',
+  };
+  return types[typeCode] || 'Naval Vessel';
+}
+
+function rebuildContacts() {
+  const shipList = Object.values(liveShips);
+  // Replace demo ships with live ships once we have data
+  const nonShips = allContacts.filter(c => c.type !== 'SHIP');
+  allContacts = [...nonShips, ...shipList];
+
+  // Update counts
+  const counts = { AIR: 0, HELO: 0, DRONE: 0, SHIP: 0 };
+  allContacts.forEach(c => { if (counts[c.type] !== undefined) counts[c.type]++; });
+  document.getElementById('count-air').textContent = counts.AIR;
+  document.getElementById('count-helo').textContent = counts.HELO;
+  document.getElementById('count-drone').textContent = counts.DRONE;
+  document.getElementById('count-ship').textContent = counts.SHIP;
+  document.getElementById('count-total').textContent = allContacts.length;
+
+  updateMarkers();
+  filterList();
+}
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
 // ═══════════════════════════════════════════════════════
@@ -669,7 +767,8 @@ async function fetchAll() {
   }, 8000);
 
   try {
-    document.getElementById('loading-sub').textContent = 'CONNECTING TO MILITARY AIR FEED...';
+    const loadingSub = document.getElementById('loading-sub');
+    if (loadingSub) loadingSub.textContent = 'CONNECTING TO MILITARY AIR FEED...';
 
     // Add a 10 second timeout to the fetch
     const controller = new AbortController();
@@ -706,7 +805,7 @@ async function fetchAll() {
       };
     });
 
-    // Combine with demo ships
+    // Combine live aircraft with demo ships
     allContacts = [...airContacts, ...demoShips];
 
     // Update counts
@@ -889,8 +988,24 @@ function showDetail(c) {
 // ═══════════════════════════════════════════════════════
 // AUTO REFRESH EVERY 30 SECONDS
 // ═══════════════════════════════════════════════════════
-fetchAll();
-setInterval(fetchAll, 30000);
+
+// Show map IMMEDIATELY with demo ships — never block on loading
+window.onload = function() {
+  // Hide loading right away
+  document.getElementById('loading-overlay').style.display = 'none';
+
+  // Load demo ships instantly
+  allContacts = [...demoShips];
+  updateMarkers();
+  filterList();
+
+  // Connect to live AIS ship data
+  connectAIS();
+
+  // Then try to fetch live aircraft data in background
+  fetchAll();
+  setInterval(fetchAll, 30000);
+};
 </script>
 </body>
 </html>
