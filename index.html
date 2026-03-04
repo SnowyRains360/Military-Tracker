@@ -769,9 +769,10 @@ let searchQuery = '';
 
 // TRAIL SYSTEM
 let trails = {};        // icao → array of [lat, lng] positions
-let trailLines = {};    // icao → Leaflet polyline
+let trailLines = {};    // icao → array of Leaflet polylines
 let trailsEnabled = true;
-const MAX_TRAIL_POINTS = 20; // Keep last 20 positions per aircraft
+let selectedTrailIcao = null; // Only show trail for this aircraft
+const MAX_TRAIL_POINTS = 20;
 
 // ═══════════════════════════════════════════════════════
 // FETCH LIVE DATA
@@ -891,24 +892,25 @@ function updateMarkers() {
   const filtered = allContacts.filter(c => activeFilter === 'ALL' || c.type === activeFilter);
 
   filtered.forEach(c => {
-    // UPDATE TRAIL POSITIONS
-    if (trailsEnabled && c.type !== 'SHIP') {
+    // UPDATE TRAIL POSITIONS — always record positions
+    if (c.type !== 'SHIP') {
       if (!trails[c.icao]) trails[c.icao] = [];
       const trail = trails[c.icao];
       const last = trail[trail.length - 1];
-      // Only add if position changed
       if (!last || last[0] !== c.lat || last[1] !== c.lng) {
         trail.push([c.lat, c.lng]);
         if (trail.length > MAX_TRAIL_POINTS) trail.shift();
       }
+    }
 
-      // Draw trail line if we have 2+ points
+    // DRAW TRAIL — only for the selected aircraft
+    if (trailsEnabled && c.icao === selectedTrailIcao && c.type !== 'SHIP') {
+      const trail = trails[c.icao] || [];
       if (trail.length >= 2) {
         const color = getVehicleColor(c.type);
-        // Create gradient effect — older points more transparent
         for (let i = 1; i < trail.length; i++) {
-          const opacity = (i / trail.length) * 0.7;
-          const weight = (i / trail.length) * 2;
+          const opacity = (i / trail.length) * 0.8;
+          const weight = (i / trail.length) * 3;
           const segment = L.polyline([trail[i-1], trail[i]], {
             color: color,
             weight: weight,
@@ -951,8 +953,15 @@ function updateMarkers() {
       `)
       .on('click', () => {
         selectedIcao = c.icao;
+        // Toggle trail — click same plane again to hide trail
+        if (selectedTrailIcao === c.icao) {
+          selectedTrailIcao = null;
+        } else {
+          selectedTrailIcao = c.icao;
+        }
         showDetail(c);
         highlightContact(c.icao);
+        updateMarkers();
       });
 
     markers[c.icao] = marker;
@@ -971,13 +980,14 @@ function toggleTrails() {
   } else {
     btn.textContent = '◈ TRAILS OFF';
     btn.classList.add('off');
-    // Clear all trails
     trails = {};
+    selectedTrailIcao = null;
     Object.values(trailLines).forEach(segments => {
       if (Array.isArray(segments)) segments.forEach(l => map.removeLayer(l));
       else map.removeLayer(segments);
     });
     trailLines = {};
+    updateMarkers();
   }
 }
 
@@ -1023,10 +1033,16 @@ function filterList() {
     `;
     row.onclick = () => {
       selectedIcao = c.icao;
+      if (selectedTrailIcao === c.icao) {
+        selectedTrailIcao = null;
+      } else {
+        selectedTrailIcao = c.icao;
+      }
       map.setView([c.lat, c.lng], 6);
       showDetail(c);
       highlightContact(c.icao);
       if (markers[c.icao]) markers[c.icao].openPopup();
+      updateMarkers();
     };
     list.appendChild(row);
   });
